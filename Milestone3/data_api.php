@@ -334,8 +334,47 @@ $sql_t4b = "
     ORDER BY FIELD(age_group, '18-25', '26-40', '41-65', '66+', 'Other')
 ";
 
+// ── TASK GEO: Raw stop locations with district + time for map/table/charts ─
+// No window functions — compatible with MySQL 5.7
+$sql_geo = "
+    SELECT
+        g.lat,
+        g.lng,
+        g.location,
+        g.district,
+        g.date,
+        g.time,
+        g.stop_count,
+        ROUND(100 * g.stop_count / t.total_count, 2) AS share_of_total
+    FROM (
+        SELECT
+            lat,
+            lng,
+            location,
+            district,
+            date,
+            time,
+            COUNT(*) AS stop_count
+        FROM ca_san_francisco_50k
+        WHERE lat IS NOT NULL AND lat != ''
+          AND lng IS NOT NULL AND lng != ''
+        GROUP BY lat, lng, location, district, date, time
+        ORDER BY stop_count DESC
+        LIMIT 500
+    ) g
+    CROSS JOIN (
+        SELECT COUNT(*) AS total_count
+        FROM ca_san_francisco_50k
+        WHERE lat IS NOT NULL AND lat != ''
+          AND lng IS NOT NULL AND lng != ''
+    ) t
+";
+
 // ── Route and respond ─────────────────────────────────────────────────────
 switch ($task) {
+    case 'geo':
+        echo json_encode(["task" => "stop_locations", "data" => runQuery($mysql, $sql_geo)]);
+        break;
     case '1':
         echo json_encode(["task" => "stops_by_district",  "data" => runQuery($mysql, $sql_t1)]);
         break;

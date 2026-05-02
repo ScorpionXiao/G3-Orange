@@ -473,15 +473,12 @@
     <table>
       <thead>
   <tr>
-    <th>#</th>
-    <th>Lat</th>
-    <th>Lng</th>
-    <th>Location</th>
-    <th>District</th>
-    <th>Date</th>
-    <th>Time</th>
-    <th>Stop Count</th>
-    <th>Share of Total</th>
+    <th>Rank</th>
+    <th>Code</th>
+    <th>District Name</th>
+    <th>Total Stops</th>
+    <th>% of All Stops</th>
+    <th>Relative Volume</th>
     </tr>
     </thead>
     <tbody id="table1-body"></tbody>
@@ -658,19 +655,15 @@ function shuffle(array) {
 }
 
 function formatExcelDate(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return value ?? '';
-  const base = Date.UTC(1899, 11, 30);
-  const dt = new Date(base + n * 86400000);
-  const y = dt.getUTCFullYear();
-  const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(dt.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  if (!value) return '';
+  // Date is now stored as M/D/YYYY string (e.g. '1/8/2012') — return as-is
+  return value;
 }
 
 function formatClock(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return value ?? '';
+  // time is seconds since midnight
   const total = Math.round(n);
   const h = Math.floor(total / 3600) % 24;
   const m = Math.floor((total % 3600) / 60);
@@ -701,24 +694,33 @@ function sampleByDistrict(rows, perDistrict = 3, maxRows = 30) {
   return sampled.slice(0, maxRows);
 }
 
-function renderTable(rows) {
+function renderTable(districtRows) {
   const tbody = document.getElementById('table1-body');
   tbody.innerHTML = '';
 
-  const sampled = sampleByDistrict(rows, 3, 30);
+  const total = districtRows.reduce((s, d) => s + Number(d.stop_count), 0);
+  const max   = Math.max(...districtRows.map(d => Number(d.stop_count)));
 
-  sampled.forEach((d, i) => {
+  districtRows.forEach((d, i) => {
+    const count = Number(d.stop_count);
+    const pct   = (100 * count / total).toFixed(1);
+    const barW  = Math.round(120 * count / max);
+    const name  = districtNames[d.district_code] || d.district_code || '—';
+    const color = districtColors[d.district_code] || ACCENT;
+
     tbody.innerHTML += `
       <tr>
         <td class="num">${i + 1}</td>
-        <td class="num">${d.lat}</td>
-        <td class="num">${d.lng}</td>
-        <td><strong>${d.location}</strong></td>
-        <td class="num accent">${d.district}</td>
-        <td class="num">${formatExcelDate(d.date)}</td>
-        <td class="num">${formatClock(d.time)}</td>
-        <td class="num">${Number(d.stop_count).toLocaleString()}</td>
-        <td class="num">${d.share_of_total}%</td>
+        <td class="num accent">${d.district_code}</td>
+        <td><strong>${name}</strong></td>
+        <td class="num">${count.toLocaleString()}</td>
+        <td class="num">${pct}%</td>
+        <td>
+          <div class="pct-bar-cell">
+            <div class="pct-bar" style="width:${barW}px; background:${color};"></div>
+            <span style="font-size:11px;color:var(--ink-light)">${count.toLocaleString()}</span>
+          </div>
+        </td>
       </tr>
     `;
   });
@@ -880,19 +882,21 @@ function renderDistrictLollipop(rows) {
 
 async function loadAll() {
   try {
-    const csvText = await fetch('table_geo.csv').then(r => r.text());
-    const rows = csvToObjects(csvText);
+    const [r1, rGeo] = await Promise.all([
+      fetch('data_api.php?task=1').then(r => r.json()),
+      fetch('data_api.php?task=geo').then(r => r.json()),
+    ]);
 
-    renderTable(rows);
-    renderMap(rows);
-    renderTimeLine(rows);
-    renderDistrictLollipop(rows);
+    renderTable(r1.data);
+    renderMap(rGeo.data);
+    renderTimeLine(rGeo.data);
+    renderDistrictLollipop(rGeo.data);
   } catch (err) {
-    console.error('Failed to load CSV:', err);
+    console.error('Failed to load data:', err);
     document.body.insertAdjacentHTML(
       'afterbegin',
       `<div style="background:#9a5a2f;color:#fff;padding:12px 64px;font-family:monospace;font-size:12px;">
-        ⚠ Could not load table_geo.csv — make sure it is in the same folder as geography.html.
+        ⚠ Could not load from data_api.php — make sure both files are on the same server.
       </div>`
     );
   }
