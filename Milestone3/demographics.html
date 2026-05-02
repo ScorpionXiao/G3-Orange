@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StopAtlas - Demographics</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #fbf3e8;
+    --paper: #fbf3e8;
+    --ink: #424242;
+    --ink-light: #7a746b;
+    --rule: #e2d6c6;
+    --accent: #cf864b;
+    --accent-soft: #e2b48c;
+    --accent-deep: #9a5a2f;
+    --accent-warm: #c9a27a;
+    --teal: #8a9388;
+    --surface: #f3ebe2;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--ink); font-family:'DM Sans',sans-serif; }
+
+  /* ── Nav (same as homepage) ── */
+  .masthead {
+    background:var(--ink); padding:0 64px;
+    display:flex; align-items:center; justify-content:space-between; height:60px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  .masthead-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  }
+  .masthead-logo img {
+  height: 35px;
+  }
+  .masthead-tagline { font-family:'IBM Plex Mono',monospace; font-size:10px; color:rgba(245,243,238,0.4); letter-spacing:1px; text-transform:uppercase; }
+  .masthead-nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.masthead-nav a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 60px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(245,243,238,0.55);
+  text-decoration: none;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.masthead-nav a:visited {
+  color: rgba(245,243,238,0.55);
+}
+
+.masthead-nav a:hover {
+  color: var(--bg);
+}
+
+.masthead-nav a.active {
+  color: var(--bg);
+}
+
+.masthead-nav a.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  height: 2px;
+  background: var(--accent);
+}
+
+  .section-nav {
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+  padding: 0 64px;
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 60px;   
+  z-index: 999;
+}
+
+.section-nav a {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 24px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-light);
+  text-decoration: none;
+  letter-spacing: 0.3px;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.section-nav a.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+  /* ── Page header ── */
+  .page-header {
+    padding:56px 64px 40px;
+    border-bottom:1px solid var(--rule);
+    background:var(--paper);
+  }
+  .page-eyebrow { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:12px; }
+  .page-header h1 { font-family:'DM Serif Display',serif; font-size:42px; letter-spacing:-1px; margin-bottom:12px; }
+  .page-header p { font-size:15px; color:var(--ink-light); max-width:920px; line-height:1.75; }
+
+  /* ── Section blocks ── */
+  .data-section { padding:64px; border-bottom:1px solid var(--rule); }
+  .data-section:nth-child(odd) { background:var(--paper); }
+  .data-section:nth-child(even) { background:var(--bg); }
+
+  .section-label { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:10px; }
+  .section-title { font-family:'DM Serif Display',serif; font-size:28px; letter-spacing:-0.5px; margin-bottom:6px; }
+  .section-desc {
+    font-size:14px;
+    color:var(--ink-light);
+    line-height:1.78;
+    max-width:920px;
+    margin-bottom:40px;
+  }
+
+  /* ── Data table ── */
+  .table-wrap { overflow-x:auto; margin-bottom:48px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  thead tr { background:var(--ink); color:var(--bg); }
+  thead th { padding:12px 16px; text-align:left; font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-weight:500; }
+  tbody tr { border-bottom:1px solid var(--rule); }
+  tbody tr:hover { background:var(--surface); }
+  tbody td { padding:11px 16px; color:var(--ink); }
+  tbody td.num { font-family:'IBM Plex Mono',monospace; font-size:12px; }
+  tbody td.accent { color:var(--accent); font-weight:600; }
+  .pct-bar-cell { display:flex; align-items:center; gap:8px; }
+  .pct-bar { height:6px; background:var(--accent); border-radius:2px; min-width:2px; }
+  .pct-bar.teal { background:var(--teal); }
+  .pct-bar.warm { background:var(--accent-warm); }
+
+  /* ── Charts grid ── */
+  .charts-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+  .chart-card { background:var(--paper); border:1px solid var(--rule); padding:24px; }
+  .chart-card.wide { grid-column:span 2; }
+  .chart-label { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:6px; }
+  .chart-title { font-size:14px; font-weight:600; color:var(--ink); margin-bottom:16px; }
+  .chart-wrap { position:relative; }
+
+  .analysis-block {
+    margin-top: 28px;
+    padding: 22px 24px;
+    background: linear-gradient(180deg, rgba(251,243,232,0.94), rgba(255,253,249,0.98));
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+  }
+
+  .analysis-kicker {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    letter-spacing:1.8px;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin-bottom:10px;
+  }
+
+  .analysis-block p {
+    font-size:14px;
+    line-height:1.78;
+    color:var(--ink-light);
+    max-width:920px;
+    margin-bottom:12px;
+  }
+
+  .analysis-block p:last-child { margin-bottom:0; }
+
+  /* ── Interactive ideas callout ── */
+  .ideas-box { background:var(--ink); color:var(--bg); padding:40px 48px; margin-top:64px; }
+  .ideas-box h2 { font-family:'DM Serif Display',serif; font-size:24px; margin-bottom:16px; }
+  .ideas-box ul { list-style:none; display:grid; grid-template-columns:1fr 1fr; gap:12px 40px; }
+  .ideas-box li { font-size:13px; line-height:1.6; color:rgba(251,243,232,0.72); padding-left:16px; position:relative; }
+  .ideas-box li::before { content:'→'; position:absolute; left:0; color:var(--accent); }
+
+  /* ── Footer (homepage) ── */
+  .footer {
+    background: var(--ink);
+    color: rgba(255, 255, 255, 0.88);
+    padding: 0 64px 56px;
+    border-top: 3px solid var(--accent);
+  }
+
+  .footer-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+    gap: 40px 72px;
+    align-items: start;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-top: 52px;
+  }
+
+  .footer-left {
+    max-width: 560px;
+  }
+
+  .footer .masthead-logo img {
+    height: 44px;
+    opacity: 0.95;
+  }
+
+  .footer-lede {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(22px, 2.6vw, 28px);
+    font-weight: 400;
+    line-height: 1.25;
+    color: #fff;
+    margin: 20px 0 14px;
+    letter-spacing: -0.02em;
+  }
+
+  .footer-desc {
+    font-size: 16px;
+    line-height: 1.65;
+    color: rgba(255, 255, 255, 0.62);
+    max-width: 42ch;
+  }
+
+  .footer-aside {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 28px 28px 26px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+  }
+
+  .footer-aside-label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    margin-bottom: 8px;
+  }
+
+  .footer-meta {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    margin-bottom: 18px;
+  }
+
+  .footer-team {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .footer-team li {
+    font-size: 15px;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.68);
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .footer-team li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .footer-team li:first-child {
+    padding-top: 0;
+  }
+
+  @media (max-width: 820px) {
+    .footer {
+      padding: 0 28px 44px;
+    }
+
+    .footer-inner {
+      grid-template-columns: 1fr;
+      gap: 36px;
+      padding-top: 40px;
+    }
+
+    .footer-desc {
+      max-width: none;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .masthead,
+    .section-nav,
+    .data-section,
+    .footer {
+      padding-left: 24px !important;
+      padding-right: 24px !important;
+    }
+
+    .charts-grid { grid-template-columns: 1fr; }
+    .chart-card.wide { grid-column: span 1; }
+
+  }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<div class="masthead">
+  <div class="masthead-logo">
+  <img src="logo_lower.png" alt="StopAtlas Logo">
+</div>
+<nav class="masthead-nav">
+    <a href="index.html">Home</a>
+    <a href="map.html">Map</a>
+    <a href="analysis.html" class="active">Analysis</a>
+    <a href="resources.html">Resources</a>
+  </nav>
+</div>
+<div class="section-nav">
+  <a href="geography.html">Geography</a>
+  <a href="time.html">Time</a>
+  <a href="outcome.html">Outcomes</a>
+  <a href="demographics.html" class="active">Demographics</a>
+</div>
+
+<section class="data-section" id="demographics">
+  <div class="section-label">Task 4 · Demographic Analysis</div>
+  <div class="section-title">Who gets stopped — and what happens to them?</div>
+  <div class="section-desc">Enforcement outcomes broken down by race and age group. Under the same stop conditions, different demographic groups show different arrest rates, which warrants careful examination.</div>
+  <div class="analysis-block">
+    <div class="analysis-kicker">Interpretation</div>
+    <p>
+      Outcome distributions vary across racial groups even when controlling for stop reason.
+      Black and Hispanic drivers show higher arrest rates compared to white and Asian/Pacific Islander drivers, a pattern that is consistent across the dataset.
+    </p>
+    <p>
+      These differences do not by themselves establish causation, but they indicate that demographic group is associated with enforcement outcome in ways that deserve closer examination. Conclusions here should be framed as correlational, not causal.
+    </p>
+  </div>
+
+  <!-- Table 4a: Race -->
+  <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:10px;">By Race</div>
+  <div class="table-wrap" style="margin-bottom:48px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Race</th>
+          <th>Total Stops</th>
+          <th>Warning %</th>
+          <th>Citation %</th>
+          <th>Arrest %</th>
+        </tr>
+      </thead>
+      <tbody id="table4a-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Table 4b: Age -->
+  <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:10px;">By Age Group</div>
+  <div class="table-wrap" style="margin-bottom:48px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Age Group</th>
+          <th>Total Stops</th>
+          <th>Arrests</th>
+          <th>Arrest Rate</th>
+        </tr>
+      </thead>
+      <tbody id="table4b-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <div class="chart-card wide">
+      <div class="chart-label">Chart 1 of 3</div>
+      <div class="chart-title">Outcome breakdown by race (stacked bar)</div>
+      <div class="chart-wrap"><canvas id="c4a" height="220"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-label">Chart 2 of 3</div>
+      <div class="chart-title">Arrest rate by race</div>
+      <div class="chart-wrap"><canvas id="c4b" height="220"></canvas></div>
+    </div>
+    <div class="chart-card wide">
+      <div class="chart-label">Chart 3 of 3</div>
+      <div class="chart-title">Arrest rate by age group</div>
+      <div class="chart-wrap"><canvas id="c4c" height="220"></canvas></div>
+    </div>
+  </div>
+
+  <div class="analysis-block">
+    <div class="analysis-kicker">Key Takeaway</div>
+    <p>
+      The data shows that arrest rates are not uniform across demographic groups. These patterns are consistent across the dataset and suggest that demographic analysis should be a central part of any complete examination of enforcement outcomes.
+    </p>
+    <p>
+      Note: correlation is not causation. Differences in arrest rate may reflect many factors including stop reason distribution, neighborhood, and other variables not fully controlled for here.
+    </p>
+  </div>
+</section>
+
+<script>
+const ACCENT_RGB = '207,134,75';
+const SAGE = '#8a9388';
+const WARM_GOLD = '#c9a27a';
+const ACCENT_DEEP = '#9a5a2f';
+const MUTED = '#7a746b';
+
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size   = 12;
+Chart.defaults.color       = MUTED;
+
+function renderDemographics(T4a, T4b) {
+
+  // ── Table 4a: race ────────────────────────────────────────────────────
+  const tbody4a = document.getElementById('table4a-body');
+  const maxTotal = Math.max(...T4a.map(d => +d.total));
+  T4a.forEach(d => {
+    const w = Math.round(80 * d.total / maxTotal);
+    tbody4a.innerHTML += `<tr>
+      <td><strong>${d.race}</strong></td>
+      <td class="num">
+        <div class="pct-bar-cell">
+          <div class="pct-bar teal" style="width:${w}px"></div>
+          <span>${(+d.total).toLocaleString()}</span>
+        </div>
+      </td>
+      <td class="num">${d.warning_pct}%</td>
+      <td class="num">${d.citation_pct}%</td>
+      <td class="num ${d.arrest_pct > 2 ? 'accent' : ''}">${d.arrest_pct}%</td>
+    </tr>`;
+  });
+
+  // ── Table 4b: age ─────────────────────────────────────────────────────
+  const tbody4b = document.getElementById('table4b-body');
+  T4b.forEach(d => {
+    tbody4b.innerHTML += `<tr>
+      <td><strong>${d.age_group}</strong></td>
+      <td class="num">${(+d.total).toLocaleString()}</td>
+      <td class="num">${(+d.arrests).toLocaleString()}</td>
+      <td class="num ${d.arrest_pct > 2 ? 'accent' : ''}">${d.arrest_pct}%</td>
+    </tr>`;
+  });
+
+  // ── Chart 4a: stacked bar race x outcome ─────────────────────────────
+  new Chart(document.getElementById('c4a'), {
+    type: 'bar',
+    data: {
+      labels: T4a.map(d => d.race),
+      datasets: [
+        {label:'Warning %',  data:T4a.map(d=>+d.warning_pct),  backgroundColor:SAGE, borderRadius:0, borderSkipped:false},
+        {label:'Citation %', data:T4a.map(d=>+d.citation_pct), backgroundColor:'rgba('+ACCENT_RGB+',0.42)', borderRadius:0, borderSkipped:false},
+        {label:'Arrest %',   data:T4a.map(d=>+d.arrest_pct),   backgroundColor:ACCENT_DEEP,  borderRadius:0, borderSkipped:false},
+      ]
+    },
+    options: {
+      plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10 } } },
+      scales:{
+        x:{ stacked:true, grid:{ display:false } },
+        y:{ stacked:true, max:100, ticks:{ callback:v=>v+'%' }, grid:{ color:'rgba(0,0,0,0.05)' } }
+      }
+    }
+  });
+
+  // ── Chart 4b: arrest rate by race only ───────────────────────────────
+  new Chart(document.getElementById('c4b'), {
+    type: 'bar',
+    data: {
+      labels: T4a.map(d => d.race),
+      datasets: [{
+        label: 'Arrest %',
+        data: T4a.map(d => +d.arrest_pct),
+        backgroundColor: T4a.map(d => +d.arrest_pct > 2 ? ACCENT_DEEP : WARM_GOLD),
+        borderRadius: 3,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:{ display:false } },
+        y:{ ticks:{ callback:v=>v+'%' }, grid:{ color:'rgba(0,0,0,0.05)' } }
+      }
+    }
+  });
+
+  // ── Chart 4c: arrest rate by age group ───────────────────────────────
+  new Chart(document.getElementById('c4c'), {
+    type: 'bar',
+    data: {
+      labels: T4b.map(d => d.age_group),
+      datasets: [{
+        label: 'Arrest %',
+        data: T4b.map(d => +d.arrest_pct),
+        backgroundColor: SAGE,
+        borderRadius: 3,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:{ display:false } },
+        y:{ ticks:{ callback:v=>v+'%' }, grid:{ color:'rgba(0,0,0,0.05)' } }
+      }
+    }
+  });
+}
+
+async function loadAll() {
+  try {
+    const [r4a, r4b] = await Promise.all([
+      fetch('data_api.php?task=4a').then(r => r.json()),
+      fetch('data_api.php?task=4b').then(r => r.json()),
+    ]);
+    renderDemographics(r4a.data, r4b.data);
+  } catch(err) {
+    console.error('Failed to load data:', err);
+    document.body.insertAdjacentHTML('afterbegin',
+      `<div style="background:#9a5a2f;color:#fff;padding:12px 64px;font-family:monospace;font-size:12px;">
+        ⚠ Could not load data from data_api.php — make sure both files are on the same server.
+      </div>`);
+  }
+}
+
+loadAll();
+</script>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="masthead-logo">
+        <img src="logo_lower.png" alt="StopAtlas Logo">
+      </div>
+      <p class="footer-lede">Exploring patterns in traffic stops across the United States</p>
+      <p class="footer-desc">Starting with San Francisco.</p>
+    </div>
+
+    <aside class="footer-aside" aria-label="Project credits">
+      <span class="footer-aside-label">Credits</span>
+      <p class="footer-meta">Group 3</p>
+      <ul class="footer-team">
+        <li>Xiuyuan</li>
+        <li>Jackson</li>
+        <li>Flowen</li>
+        <li>Domi</li>
+      </ul>
+    </aside>
+  </div>
+</footer>
+
+</body>
+</html>
