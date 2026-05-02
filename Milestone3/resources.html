@@ -97,37 +97,18 @@
   }
   .page-header h1 {
     font-family: 'DM Serif Display', serif;
-    font-size: 42px;
+    font-size: 48px;
     letter-spacing: -1px;
     margin-bottom: 12px;
   }
   .page-header p {
     font-size: 15px;
     color: var(--ink-light);
-    max-width: 920px;
     line-height: 1.75;
   }
 
   .resources-main {
     padding: 64px 64px 96px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-
-  .resource-group {
-    margin-bottom: 44px;
-  }
-  .resource-group:last-child {
-    margin-bottom: 0;
-  }
-
-  .group-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 2px;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 14px;
   }
 
   .resources-grid {
@@ -137,7 +118,7 @@
   }
 
   .resource-card {
-    background: var(--surface);
+    background: white;
     border: 1px solid var(--rule);
     padding: 26px;
     display: flex;
@@ -162,7 +143,8 @@
 
   .resource-tag {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
+    font-size: 12px;
+    font-weight: 500;
     letter-spacing: 1.8px;
     text-transform: uppercase;
     color: var(--accent);
@@ -170,7 +152,7 @@
 
   .resource-link {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 0.8px;
     text-transform: uppercase;
     color: var(--ink-light);
@@ -188,10 +170,9 @@
   }
 
   .resource-summary {
-    font-size: 15px;
+    font-size: 16px;
     line-height: 1.8;
     color: var(--ink-light);
-    max-width: 58ch;
   }
 
   .resource-footer {
@@ -208,7 +189,7 @@
     border: 1px solid var(--rule);
     border-radius: 999px;
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
+    font-size: 12px;
     letter-spacing: 0.6px;
     color: var(--ink-light);
     background: rgba(251, 243, 232, 0.6);
@@ -367,7 +348,7 @@
 
 <div class="page-header">
   <div class="page-eyebrow">USC · IDSN 530 · Resource index</div>
-  <h1>Data sources and further reading</h1>
+  <h1>Data sources and readings</h1>
   <p>
     Curated links to the core dataset, tools used in the project, and research that contextualizes traffic-stop data.
     These references support reproducibility and help place the San Francisco analysis in wider policy and methods discussions.
@@ -375,108 +356,100 @@
 </div>
 
 <main class="resources-main">
-  <div class="resource-group">
-    <div class="group-label">Data Sources</div>
-    <div class="resources-grid">
-      <a class="resource-card" href="https://openpolicing.stanford.edu/data/" target="_blank" rel="noopener noreferrer">
-        <div class="resource-meta">
-          <span class="resource-tag">Core dataset</span>
-          <span class="resource-link">Open source</span>
-        </div>
-        <h2>Stanford Open Policing Project — San Francisco data</h2>
-        <p class="resource-summary">
-          This is the project’s main dataset, providing standardized traffic-stop records that make it possible to compare where stops happen, when they happen, and what outcomes follow.
-        </p>
-        <div class="resource-footer">
-          <span class="pill">Traffic stops</span>
-          <span class="pill">CSV / RDS</span>
-          <span class="pill">San Francisco</span>
-        </div>
-      </a>
+  <div class="resources-grid">
+    <a class="resource-card" href="https://openpolicing.stanford.edu/data/" target="_blank" rel="noopener noreferrer">
+      <div class="resource-meta">
+        <span class="resource-tag">Core dataset</span>
+        <span class="resource-link">Open source</span>
+      </div>
+      <h2>Stanford Open Policing Project — San Francisco data</h2>
+      <p class="resource-summary">
+        This is the project’s main dataset, providing standardized traffic-stop records that make it possible to compare where stops happen, when they happen, and what outcomes follow.
+      </p>
+      <div class="resource-footer">
+        <span class="pill">Traffic stops</span>
+        <span class="pill">CSV / RDS</span>
+        <span class="pill">San Francisco</span>
+      </div>
+    </a>
 
-      <a class="resource-card" href="https://kepler.gl/" target="_blank" rel="noopener noreferrer">
-        <div class="resource-meta">
-          <span class="resource-tag">Visualization tool</span>
-          <span class="resource-link">Official site</span>
-        </div>
-        <h2>Kepler.gl</h2>
-        <p class="resource-summary">
-          Kepler.gl was used to build and test the map visualization quickly, especially for exploring dense geospatial patterns before translating them into the custom homepage and analysis pages.
-        </p>
-        <div class="resource-footer">
-          <span class="pill">Geospatial viz</span>
-          <span class="pill">WebGL</span>
-          <span class="pill">Interactive maps</span>
-        </div>
-      </a>
-    </div>
-  </div>
+    <a class="resource-card" href="https://kepler.gl/" target="_blank" rel="noopener noreferrer">
+      <div class="resource-meta">
+        <span class="resource-tag">Visualization tool</span>
+        <span class="resource-link">Official site</span>
+      </div>
+      <h2>Kepler.gl</h2>
+      <p class="resource-summary">
+        Kepler.gl was used to build and test the map visualization quickly, especially for exploring dense geospatial patterns before translating them into the custom homepage and analysis pages.
+      </p>
+      <div class="resource-footer">
+        <span class="pill">Geospatial viz</span>
+        <span class="pill">WebGL</span>
+        <span class="pill">Interactive maps</span>
+      </div>
+    </a>
 
-  <div class="resource-group">
-    <div class="group-label">Articles / Research</div>
-    <div class="resources-grid">
-      <a class="resource-card" href="https://nature.com/articles/s41562-020-0858-1" target="_blank" rel="noopener noreferrer">
-        <div class="resource-meta">
-          <span class="resource-tag">Research paper</span>
-          <span class="resource-link">Read paper</span>
-        </div>
-        <h2>A large-scale analysis of racial disparities in police stops across the United States</h2>
-        <p class="resource-summary">
-          Pierson et al. analyze nearly 100 million traffic stops and show how large-scale stop data can reveal racial disparities in stop decisions and search outcomes.
-        </p>
-        <div class="resource-footer">
-          <span class="pill">Nature Human Behaviour</span>
-          <span class="pill">2020</span>
-        </div>
-      </a>
+    <a class="resource-card" href="https://nature.com/articles/s41562-020-0858-1" target="_blank" rel="noopener noreferrer">
+      <div class="resource-meta">
+        <span class="resource-tag">Research paper</span>
+        <span class="resource-link">Read paper</span>
+      </div>
+      <h2>A large-scale analysis of racial disparities in police stops across the United States</h2>
+      <p class="resource-summary">
+        Pierson et al. analyze nearly 100 million traffic stops and show how large-scale stop data can reveal racial disparities in stop decisions and search outcomes.
+      </p>
+      <div class="resource-footer">
+        <span class="pill">Nature Human Behaviour</span>
+        <span class="pill">2020</span>
+      </div>
+    </a>
 
-      <a class="resource-card" href="https://www.ppic.org/publication/racial-disparities-in-traffic-stops/" target="_blank" rel="noopener noreferrer">
-        <div class="resource-meta">
-          <span class="resource-tag">Policy report</span>
-          <span class="resource-link">Read report</span>
-        </div>
-        <h2>Racial Disparities in Traffic Stops</h2>
-        <p class="resource-summary">
-          This PPIC report examines 3.4 million California traffic stops and compares disparities across time of day, agency type, and traffic violation type.
-        </p>
-        <div class="resource-footer">
-          <span class="pill">California</span>
-          <span class="pill">Traffic stops</span>
-          <span class="pill">Racial disparities</span>
-        </div>
-      </a>
+    <a class="resource-card" href="https://www.ppic.org/publication/racial-disparities-in-traffic-stops/" target="_blank" rel="noopener noreferrer">
+      <div class="resource-meta">
+        <span class="resource-tag">Policy report</span>
+        <span class="resource-link">Read report</span>
+      </div>
+      <h2>Racial Disparities in Traffic Stops</h2>
+      <p class="resource-summary">
+        This PPIC report examines 3.4 million California traffic stops and compares disparities across time of day, agency type, and traffic violation type.
+      </p>
+      <div class="resource-footer">
+        <span class="pill">California</span>
+        <span class="pill">Traffic stops</span>
+        <span class="pill">Racial disparities</span>
+      </div>
+    </a>
 
-      <a class="resource-card" href="https://openpolicing.stanford.edu/findings/" target="_blank" rel="noopener noreferrer">
-        <div class="resource-meta">
-          <span class="resource-tag">Project findings</span>
-          <span class="resource-link">View findings</span>
-        </div>
-        <h2>Stanford Open Policing Project — Findings</h2>
-        <p class="resource-summary">
-          The project’s findings page summarizes the broader statistical patterns behind the dataset and gives context for how racial disparities appear across agencies and stop types.
-        </p>
-        <div class="resource-footer">
-          <span class="pill">Official findings</span>
-          <span class="pill">Methods context</span>
-        </div>
-      </a>
+    <a class="resource-card" href="https://openpolicing.stanford.edu/findings/" target="_blank" rel="noopener noreferrer">
+      <div class="resource-meta">
+        <span class="resource-tag">Project findings</span>
+        <span class="resource-link">View findings</span>
+      </div>
+      <h2>Stanford Open Policing Project — Findings</h2>
+      <p class="resource-summary">
+        The project’s findings page summarizes the broader statistical patterns behind the dataset and gives context for how racial disparities appear across agencies and stop types.
+      </p>
+      <div class="resource-footer">
+        <span class="pill">Official findings</span>
+        <span class="pill">Methods context</span>
+      </div>
+    </a>
 
-      <a class="resource-card" href="https://www.nature.com/articles/s41562-020-01029-w" target="_blank" rel="noopener noreferrer">
-        <div class="resource-meta">
-          <span class="resource-tag">Research paper</span>
-          <span class="resource-link">Read paper</span>
-        </div>
-        <h2>Officer bias, over-patrolling and ethnic disparities in stop and search</h2>
-        <p class="resource-summary">
-          This study helps frame stop-and-search disparities as the result of both officer behavior and department-level patterns, which is useful when interpreting concentrated stop activity in a single city.
-        </p>
-        <div class="resource-footer">
-          <span class="pill">Comparative research</span>
-          <span class="pill">Ethnic disparity</span>
-          <span class="pill">Stop and search</span>
-        </div>
-      </a>
-    </div>
+    <a class="resource-card" href="https://www.nature.com/articles/s41562-020-01029-w" target="_blank" rel="noopener noreferrer">
+      <div class="resource-meta">
+        <span class="resource-tag">Research paper</span>
+        <span class="resource-link">Read paper</span>
+      </div>
+      <h2>Officer bias, over-patrolling and ethnic disparities in stop and search</h2>
+      <p class="resource-summary">
+        This study helps frame stop-and-search disparities as the result of both officer behavior and department-level patterns, which is useful when interpreting concentrated stop activity in a single city.
+      </p>
+      <div class="resource-footer">
+        <span class="pill">Comparative research</span>
+        <span class="pill">Ethnic disparity</span>
+        <span class="pill">Stop and search</span>
+      </div>
+    </a>
   </div>
 </main>
 

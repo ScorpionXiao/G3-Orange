@@ -103,7 +103,9 @@
     margin-bottom: 16px; line-height: 1.1;
   }
   .page-header p {
-    font-size: 16px; color: var(--ink-light); max-width: 620px; line-height: 1.75;
+    font-size: 16px;
+    color: var(--ink-light);
+    line-height: 1.75;
   }
 
   /* ── Cards area ── */
@@ -117,7 +119,7 @@
   /* Each card */
   .dim-card {
     flex: 1;
-    background: var(--paper);
+    background:white;
     border: 1px solid var(--rule);
     padding: 40px 36px 36px;
     cursor: pointer;
@@ -136,14 +138,11 @@
     position: absolute;
     bottom: 0; left: 0; right: 0;
     height: 3px;
+    background: var(--accent);
     transform: scaleX(0);
     transform-origin: left;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .dim-card.geo::before  { background: var(--accent); }
-  .dim-card.time::before { background: var(--accent-warm); }
-  .dim-card.out::before  { background: var(--accent-deep); }
-  .dim-card.demo::before { background: var(--accent-dust); }
 
   .dim-card:hover {
     transform: translateY(-4px);
@@ -169,19 +168,13 @@
   }
   .card-icon svg { width: 36px; height: 36px; }
 
-  .dim-card.geo  .card-icon svg { stroke: var(--accent); }
-  .dim-card.time .card-icon svg { stroke: var(--accent-warm); }
-  .dim-card.out  .card-icon svg { stroke: var(--accent-deep); }
-  .dim-card.demo .card-icon svg { stroke: var(--accent-dust); }
+  .dim-card .card-icon svg { stroke: var(--accent); }
 
   .card-label {
     font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 2.5px;
     text-transform: uppercase; margin-bottom: 8px;
+    color: var(--accent);
   }
-  .dim-card.geo  .card-label { color: var(--accent); }
-  .dim-card.time .card-label { color: var(--accent-warm); }
-  .dim-card.out  .card-label { color: var(--accent-deep); }
-  .dim-card.demo .card-label { color: var(--accent-dust); }
 
   .card-title {
     font-family: 'DM Serif Display', serif; font-size: 26px; letter-spacing: -0.5px;
@@ -194,12 +187,9 @@
   .card-cta {
     margin-top: 32px; display: inline-flex; align-items: center; gap: 8px;
     font-size: 12px; font-weight: 600; letter-spacing: 0.3px;
+    color: var(--accent);
     transition: gap 0.2s;
   }
-  .dim-card.geo  .card-cta { color: var(--accent); }
-  .dim-card.time .card-cta { color: var(--accent-warm); }
-  .dim-card.out  .card-cta { color: var(--accent-deep); }
-  .dim-card.demo .card-cta { color: var(--accent-dust); }
   .dim-card:hover .card-cta { gap: 12px; }
 
   .card-cta-arrow { font-size: 16px; line-height: 1; }
@@ -466,19 +456,8 @@
 </div>
 
 <script>
-  const colorMap = {
-    geo:  getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
-    time: getComputedStyle(document.documentElement).getPropertyValue('--accent-warm').trim(),
-    out:  getComputedStyle(document.documentElement).getPropertyValue('--accent-deep').trim(),
-    demo: getComputedStyle(document.documentElement).getPropertyValue('--accent-dust').trim(),
-  };
-
-  const colors = {
-    geo:  '#cf864b',
-    time: '#c9a27a',
-    out:  '#9a5a2f',
-    demo: '#a67c52',
-  };
+  const accentHex = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  const colors = { geo: accentHex, time: accentHex, out: accentHex, demo: accentHex };
 
   const navLinks = {
     geo:  document.getElementById('navGeo'),
@@ -486,6 +465,28 @@
     out:  document.getElementById('navOut'),
     demo: document.getElementById('navDemo'),
   };
+
+  /** BFCache restores the page mid-transition; clear overlay so back navigation is not stuck on solid color. */
+  function resetTransitionOverlay() {
+    const overlay = document.getElementById('overlay');
+    const circle = document.getElementById('transCircle');
+    if (overlay) {
+      overlay.classList.remove('active');
+      overlay.style.opacity = '';
+    }
+    if (circle) {
+      circle.removeAttribute('style');
+    }
+    const subNav = document.getElementById('sectionNav');
+    if (subNav) {
+      subNav.classList.remove('visible');
+    }
+    document.querySelectorAll('#sectionNav a.active').forEach(a => a.classList.remove('active'));
+  }
+
+  window.addEventListener('pageshow', () => {
+    resetTransitionOverlay();
+  });
 
   function navigateTo(href, cardEl, type) {
     // 1. Brief press effect
