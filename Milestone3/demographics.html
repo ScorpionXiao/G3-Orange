@@ -121,20 +121,19 @@
   }
   .page-eyebrow { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:12px; }
   .page-header h1 { font-family:'DM Serif Display',serif; font-size:42px; letter-spacing:-1px; margin-bottom:12px; }
-  .page-header p { font-size:15px; color:var(--ink-light); max-width:920px; line-height:1.75; }
+  .page-header p { font-size:15px; color:var(--ink-light); line-height:1.75; }
 
   /* ── Section blocks ── */
   .data-section { padding:64px; border-bottom:1px solid var(--rule); }
   .data-section:nth-child(odd) { background:var(--paper); }
   .data-section:nth-child(even) { background:var(--bg); }
 
-  .section-label { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:10px; }
+  .section-label { font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:500; letter-spacing:1.5px; color:var(--accent); text-transform:uppercase; margin-bottom:10px; }
   .section-title { font-family:'DM Serif Display',serif; font-size:28px; letter-spacing:-0.5px; margin-bottom:6px; }
   .section-desc {
     font-size:14px;
     color:var(--ink-light);
     line-height:1.78;
-    max-width:920px;
     margin-bottom:40px;
   }
 
@@ -157,7 +156,7 @@
   .charts-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
   .chart-card { background:var(--paper); border:1px solid var(--rule); padding:24px; }
   .chart-card.wide { grid-column:span 2; }
-  .chart-label { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:6px; }
+  .chart-label { font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:500; letter-spacing:1.5px; color:var(--accent); text-transform:uppercase; margin-bottom:6px; }
   .chart-title { font-size:14px; font-weight:600; color:var(--ink); margin-bottom:16px; }
   .chart-wrap { position:relative; }
 
@@ -170,19 +169,34 @@
   }
 
   .analysis-kicker {
+    font-family:'DM Serif Display',serif;
+    font-size:20px;
+    font-weight:700;
+    letter-spacing:-0.02em;
+    color:var(--ink);
+    text-transform:none;
+    margin-bottom:14px;
+  }
+
+  /* Match section-label scale; extra top only before first data table after Interpretation */
+  .demo-subsection-label {
     font-family:'IBM Plex Mono',monospace;
-    font-size:10px;
-    letter-spacing:1.8px;
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:1.5px;
     color:var(--accent);
     text-transform:uppercase;
     margin-bottom:10px;
   }
 
+  #demographics .demo-subsection-label--after-interpretation {
+    margin-top:52px;
+  }
+
   .analysis-block p {
-    font-size:14px;
-    line-height:1.78;
+    font-size:16px;
+    line-height:1.75;
     color:var(--ink-light);
-    max-width:920px;
     margin-bottom:12px;
   }
 
@@ -356,7 +370,7 @@
   </div>
 
   <!-- Table 4a: Race -->
-  <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:10px;">By Race</div>
+  <div class="demo-subsection-label demo-subsection-label--after-interpretation">By Race</div>
   <div class="table-wrap" style="margin-bottom:48px;">
     <table>
       <thead>
@@ -373,7 +387,7 @@
   </div>
 
   <!-- Table 4b: Age -->
-  <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:10px;">By Age Group</div>
+  <div class="demo-subsection-label">By Age Group</div>
   <div class="table-wrap" style="margin-bottom:48px;">
     <table>
       <thead>

@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StopAtlas — Data</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link
   rel="stylesheet"
   href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -128,16 +127,16 @@
   }
   .page-eyebrow { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:12px; }
   .page-header h1 { font-family:'DM Serif Display',serif; font-size:42px; letter-spacing:-1px; margin-bottom:12px; }
-  .page-header p { font-size:15px; color:var(--ink-light); max-width:600px; line-height:1.7; }
+  .page-header p { font-size:15px; color:var(--ink-light); line-height:1.7; }
 
   /* ── Section blocks ── */
   .data-section { padding:64px; border-bottom:1px solid var(--rule); }
   .data-section:nth-child(odd) { background:var(--paper); }
   .data-section:nth-child(even) { background:var(--bg); }
 
-  .section-label { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:10px; }
+  .section-label { font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:500; letter-spacing:1.5px; color:var(--accent); text-transform:uppercase; margin-bottom:10px; }
   .section-title { font-family:'DM Serif Display',serif; font-size:28px; letter-spacing:-0.5px; margin-bottom:6px; }
-  .section-desc { font-size:16px; color:var(--ink-light); line-height:1.7; max-width:640px; margin-bottom:40px; }
+  .section-desc { font-size:16px; color:var(--ink-light); line-height:1.7; margin-bottom:40px; }
 
 .table-wrap {
   max-height: 470px;
@@ -169,7 +168,7 @@
   /* ── Charts grid ── */
   .chart-card { background:var(--paper); border:1px solid var(--rule); padding:24px; }
   .chart-card.wide { grid-column:span 2; }
-  .chart-label { font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:6px; }
+  .chart-label { font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:500; letter-spacing:1.5px; color:var(--accent); text-transform:uppercase; margin-bottom:6px; }
   .chart-header {
   display: flex;
   align-items: baseline;   /* 对齐更自然 */
@@ -211,8 +210,8 @@
 }
 
 .analysis-note p {
-  font-size: 15px;
-  line-height: 1.8;
+  font-size: 16px;
+  line-height: 1.75;
   color: var(--ink-light);
   margin-bottom: 18px;
 }
@@ -291,6 +290,7 @@
   gap: 8px;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;
+  font-weight: 500;
   color: var(--ink);
 }
 
@@ -528,7 +528,7 @@
     <div class="chart-card analysis-chart">
       <div class="chart-header">
       <div class="chart-title">Stop locations on the map</div>
-      <div class="chart-label">Chart 1 of 3</div>
+      <div class="chart-label">Chart 1 of 2</div>
       </div>
       <div id="geoMap" class="map-wrap"></div>
     </div>
@@ -548,7 +548,7 @@
       <div class="chart-header">
       
       <div class="chart-title">District ranking — lollipop</div>
-      <div class="chart-label">Chart 2 of 3</div>
+      <div class="chart-label">Chart 2 of 2</div>
       </div>
       <div id="districtLollipop" class="lollipop-wrap"></div>
     </div>
@@ -567,36 +567,12 @@
     </div>
   </div>
 
-  <div class="analysis-row">
-    <div class="chart-card analysis-chart">
-      <div class="chart-header">
-      
-      <div class="chart-title">Stops by hour of day</div>
-      <div class="chart-label">Chart 3 of 3</div>
-      </div>
-      <div class="chart-wrap">
-        <canvas id="timeLine" height="220"></canvas>
-      </div>
-    </div>
-    <div class="analysis-note">
-      <h3>Temporal rhythm</h3>
-      <p>
-  Stop activity follows a clear daily cycle rather than remaining constant. The chart shows a sharp increase in the morning, with a major peak around 8–10 AM, followed by a second rise in the late afternoon and early evening.
-</p>
-<p>
-  Activity drops significantly in the early morning hours (around 3–5 AM), indicating a strong relationship with commuting and daily movement patterns. The repeated peaks suggest that stops are closely tied to predictable time-based behaviors rather than random distribution.
-</p>
-    </div>
-  </div>
-
   
 </div>
 </section>
 
 <script>
 const ACCENT = '#cf864b';
-const ACCENT_RGB = '207,134,75';
-const MUTED = '#7a746b';
 
 const districtNames = {
   A: 'Northern',
@@ -623,10 +599,6 @@ const districtColors = {
   I: '#e2b48c',
   J: '#b89a82'
 };
-
-Chart.defaults.font.family = "'DM Sans', sans-serif";
-Chart.defaults.font.size   = 12;
-Chart.defaults.color       = MUTED;
 
 function parseCSV(text) {
   const rows = [];
@@ -839,48 +811,6 @@ function renderMap(rows) {
  
 }
 
-function renderTimeLine(rows) {
-  const hourTotals = Array.from({ length: 24 }, (_, h) => ({
-    hour: h,
-    value: 0
-  }));
-
-  rows.forEach(d => {
-    const seconds = Number(d.time);
-    const count = Number(d.stop_count) || 0;
-    if (!Number.isFinite(seconds)) return;
-
-    const hour = Math.floor(seconds / 3600) % 24;
-    hourTotals[hour].value += count;
-  });
-
-  new Chart(document.getElementById('timeLine'), {
-    type: 'line',
-    data: {
-      labels: hourTotals.map(d => `${String(d.hour).padStart(2, '0')}:00`),
-      datasets: [{
-        label: 'Stops',
-        data: hourTotals.map(d => d.value),
-        borderColor: ACCENT,
-        backgroundColor: 'rgba(' + ACCENT_RGB + ', 0.12)',
-        fill: true,
-        tension: 0.35,
-        pointRadius: 3,
-        pointBackgroundColor: ACCENT
-      }]
-    },
-    options: {
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        x: { grid: { display: false } },
-        y: { grid: { color: 'rgba(0,0,0,0.05)' } }
-      }
-    }
-  });
-}
-
 function renderDistrictLollipop(rows) {
   const agg = new Map();
 
@@ -927,7 +857,6 @@ async function loadAll() {
 
     renderTable(r1.data);
     renderMap(rGeo.data);
-    renderTimeLine(rGeo.data);
     renderDistrictLollipop(rGeo.data);
   } catch (err) {
     console.error('Failed to load data:', err);
