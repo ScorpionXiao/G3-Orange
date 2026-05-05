@@ -9,102 +9,8 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
-
+<link rel="stylesheet" href="stylesheet.css">
 <style>
-  :root {
-    --bg: #f5f3ee;
-    --paper: #faf9f6;
-    --ink: #424242;
-    --ink-light: #6b6860;
-    --rule: #d6d3cc;
-    --accent: #ba554a;
-    --accent-warm: #e67e22;
-    --teal: #1a7a6e;
-    --surface: #edeae3;
-    --panel-w: 380px;
-  }
-  
-
-  *, *::before, *::after { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    overflow: hidden;
-  }
-
-  /* ── Masthead (match index.html) ── */
-  .masthead {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: var(--ink);
-    padding: 0 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 60px;
-    z-index: 2000;
-  }
-
-  .masthead-logo {
-    display: flex;
-    vertical-align: middle;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .masthead-logo img {
-    height: 35px;
-  }
-
-  .masthead-tagline {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    color: rgba(245, 243, 238, 0.4);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-
-  .masthead-nav {
-    display: flex;
-    gap: 28px;
-  }
-
-  .masthead-nav a {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    height: 60px;
-    font-size: 12px;
-    font-weight: 500;
-    color: rgba(245, 243, 238, 0.55);
-    text-decoration: none;
-    letter-spacing: 0.5px;
-    transition: color 0.15s;
-    vertical-align: middle;
-  }
-
-  .masthead-nav a:hover {
-    color: var(--bg);
-  }
-
-  .masthead-nav a.active {
-    color: var(--bg);
-  }
-
-  .masthead-nav a.active::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 16px;
-    height: 2px;
-    background: #cf864b;
-  }
-
   /* ── Layout shell ── */
   .shell {
     position: fixed;
@@ -364,7 +270,7 @@
     height: 4px;
     background: transparent;
     pointer-events: none;
-    -webkit-appearance: none;
+    /* -webkit-appearance: none; */
     outline: none;
     top: 8px;
   }
