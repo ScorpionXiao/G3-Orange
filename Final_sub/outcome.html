@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StopAtlas - Stop Reasons & Outcomes</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="stylesheet.css">
+</head>
+<body class="outcome-page">
+
+<!-- Nav -->
+<div class="masthead">
+  <div class="masthead-logo">
+  <img src="logo_lower.png" alt="StopAtlas Logo">
+</div>
+<nav class="masthead-nav">
+    <a href="index.html">Home</a>
+    <a href="map.html">Map</a>
+    <a href="analysis.html" class="active">Analysis</a>
+    <a href="resources.html">Resources</a>
+  </nav>
+</div>
+<div class="section-nav">
+  <a href="geography.html">Geography</a>
+  <a href="time.html">Time</a>
+  <a href="outcome.html" class="active">Outcomes</a>
+  <a href="demographics.html">Demographics</a>
+</div>
+
+<section class="data-section" id="outcomes">
+  <div class="section-label">Task 3 · Stop Reason Analysis</div>
+  <div class="section-title">What happens after a stop?</div>
+  <div class="section-desc">Enforcement outcomes (warning / citation / arrest) broken down by stop reason. BOLO/Warrant stops result in arrests 42% of the time — far higher than any other category.</div>
+  <div class="analysis-block">
+    <p>
+      Enforcement outcomes are closely associated with the stated reason for a stop.
+      Some stop categories end primarily in warnings or citations, while others show a much higher arrest share, suggesting that what happens after a stop is structured rather than uniform.
+    </p>
+    <p>
+      The search hit rate — how often a search actually finds contraband — also varies significantly by stop reason, raising questions about whether searches are being applied consistently across stop types.
+    </p>
+  </div>
+
+  <!-- Table 3 -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Stop Reason</th>
+          <th>Total Stops</th>
+          <th>Warning %</th>
+          <th>Citation %</th>
+          <th>Arrest %</th>
+          <th>Search Hit Rate</th>
+        </tr>
+      </thead>
+      <tbody id="table3-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Charts 3 -->
+  <div class="analysis-stack">
+    <div class="analysis-row">
+      <div class="chart-card analysis-chart">
+        <div class="chart-header">
+          <div class="chart-title">Arrest risk by stop reason</div>
+          <div class="chart-label">Chart 1 of 2</div>
+        </div>
+        <p class="chart-subline">Each bubble: x = arrest rate (%), y = search rate (%), size ∝ total stops.</p>
+        <div class="chart-wrap"><canvas id="c3a"></canvas></div>
+      </div>
+      <div class="analysis-note">
+        <h3>Risk landscape</h3>
+        <p>Each bubble encodes one stop reason. Horizontal position shows arrest share, vertical position shows how often officers search, and area reflects how common that reason is citywide—making high-arrest, high-search pockets easy to spot.</p>
+      </div>
+    </div>
+    <div class="analysis-row">
+      <div class="chart-card analysis-chart">
+        <div class="chart-header">
+          <div class="chart-title">Search contraband hit rate by reason</div>
+          <div class="chart-label">Chart 2 of 2</div>
+        </div>
+        <div class="chart-wrap chart-wrap--scroll"><div id="c3b-custom"></div></div>
+      </div>
+      <div class="analysis-note">
+        <h3>Hit rates</h3>
+        <p>Hit rate measures whether a search finds contraband. Large gaps across reasons raise questions about whether searches are applied consistently for comparable stops.</p>
+      </div>
+    </div>
+  </div>
+  <div class="analysis-block">
+    <div class="analysis-kicker">Key Takeaway</div>
+    <p>
+      Post-stop outcomes are not evenly distributed. The data suggests that both the reason for the stop and the characteristics of the stopped population are associated with different enforcement results, making outcome analysis central to the larger StopAtlas story.
+    </p>
+  </div>
+</section>
+
+<script>
+const MUTED = '#7a746b';
+
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size   = 12;
+Chart.defaults.color       = MUTED;
+
+// ── Render functions (called after data loads) ────────────────────────────
+
+/** 橙 / 红 / 浅绿循环，色相差大、类别好区分；气泡与右侧条形同一 reason 同色 */
+const BUBBLE_COLOR_PAIRS = [
+  { fill: '#e8915a', border: '#c76a32' },
+  { fill: '#e06363', border: '#b03838' },
+  { fill: '#a6cf7c', border: '#5f9a42' },
+  { fill: '#f0b563', border: '#d4923d' },
+  { fill: '#d45757', border: '#9a2f2f' },
+  { fill: '#c4e6a8', border: '#6aa84f' },
+  { fill: '#f4a84a', border: '#cf7e28' },
+  { fill: '#ea7a7a', border: '#c44a4a' },
+  { fill: '#9dd49d', border: '#4a8f4a' },
+  { fill: '#e8c06b', border: '#c49a3d' },
+  { fill: '#cc5555', border: '#8f3030' },
+  { fill: '#b8e0c4', border: '#4a9a6a' },
+];
+
+function renderSection3(T3) {
+  const tbody = document.getElementById('table3-body');
+  T3.forEach(d => {
+    tbody.innerHTML += `<tr>
+      <td><strong>${d.reason}</strong></td>
+      <td class="num">${(+d.total).toLocaleString()}</td>
+      <td class="num">${d.warning_pct}%</td>
+      <td class="num">${d.citation_pct}%</td>
+      <td class="num ${d.arrest_pct > 5 ? 'accent' : ''}">${d.arrest_pct}%</td>
+      <td class="num">${d.hit_rate_pct}%</td>
+    </tr>`;
+  });
+
+  const uniqueReasons = [...new Set(T3.map(d => d.reason))].sort((a, b) =>
+    String(a).localeCompare(String(b), undefined, { sensitivity: 'base' })
+  );
+  const reasonColorIndex = new Map(
+    uniqueReasons.map((r, i) => [r, i % BUBBLE_COLOR_PAIRS.length])
+  );
+  function colorsForReason(reason) {
+    const idx = reasonColorIndex.has(reason) ? reasonColorIndex.get(reason) : 0;
+    return BUBBLE_COLOR_PAIRS[idx];
+  }
+
+  const maxTotal = Math.max(...T3.map(d => +d.total));
+  const bubbleDatasets = T3.map((d) => {
+    const { fill, border } = colorsForReason(d.reason);
+    return {
+      label: d.reason,
+      data: [{
+        x: +d.arrest_pct,
+        y: +(100 * d.searches / d.total).toFixed(1),
+        r: Math.max(6, Math.round(28 * Math.sqrt(+d.total / maxTotal)))
+      }],
+      backgroundColor: fill + 'cc',
+      borderColor: border,
+      borderWidth: 1.5
+    };
+  });
+
+  new Chart(document.getElementById('c3a'), {
+    type: 'bubble',
+    data: { datasets: bubbleDatasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position:'bottom', labels:{ boxWidth:10, font:{size:10} } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const d = ctx.raw;
+              return `${ctx.dataset.label} — Arrest: ${d.x}%, Search rate: ${d.y}%`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display:true, text:'Arrest Rate (%)', font:{size:11}, color:MUTED },
+          ticks: { callback: v => v+'%' },
+          grid: { color:'rgba(0,0,0,0.05)' }
+        },
+        y: {
+          title: { display:true, text:'Search Rate (%)', font:{size:11}, color:MUTED },
+          ticks: { callback: v => v+'%' },
+          grid: { color:'rgba(0,0,0,0.05)' }
+        }
+      }
+    }
+  });
+
+  const maxHit = Math.max(...T3.map(d => +d.hit_rate_pct));
+  const sorted = [...T3].sort((a,b) => +b.hit_rate_pct - +a.hit_rate_pct);
+  const container = document.getElementById('c3b-custom');
+  container.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:4px 0;';
+
+  sorted.forEach((d, i) => {
+    const pct = +d.hit_rate_pct;
+    const isTop = pct === maxHit;
+    const isHigh = i < 3;
+    const isEmpty = pct === 0;
+    const barW = isEmpty ? 0 : Math.max(4, Math.round(100 * pct / maxHit));
+    const pair = colorsForReason(d.reason);
+    const barColor = isEmpty ? '#e2d6c6' : pair.fill;
+    const icon = isTop ? '⚠️' : isHigh ? '●' : '';
+    const labelColor = isEmpty ? 'var(--ink-light)' : 'var(--ink)';
+    const pctColor = isEmpty ? MUTED : isTop ? pair.border : MUTED;
+
+    container.innerHTML += `
+      <div style="display:flex;flex-direction:column;gap:3px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:11px;color:${labelColor};min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${d.reason}">${icon} ${d.reason}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:${pctColor};font-weight:${isTop?'600':'400'}">${isEmpty ? '—' : pct+'%'}</span>
+        </div>
+        <div style="height:8px;background:var(--rule);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${barW}%;background:${barColor};border-radius:4px;transition:width 0.4s ease;"></div>
+        </div>
+      </div>`;
+  });
+}
+
+// ── Fetch ─────────────────────────────────────────────────────────────────
+async function loadAll() {
+  try {
+    const r3 = await fetch('data_api.php?task=3').then(r => r.json());
+    renderSection3(r3.data);
+  } catch(err) {
+    console.error('Failed to load data:', err);
+    document.body.insertAdjacentHTML('afterbegin',
+      `<div style="background:#9a5a2f;color:#fff;padding:12px 64px;font-family:monospace;font-size:12px;">
+        ⚠ Could not load data from data_api.php — make sure both files are on the same server.
+      </div>`);
+  }
+}
+
+loadAll();
+</script>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="masthead-logo">
+        <img src="logo_lower.png" alt="StopAtlas Logo">
+      </div>
+      <p class="footer-lede">Exploring patterns in traffic stops across the United States</p>
+      <p class="footer-desc">Starting with San Francisco.</p>
+    </div>
+
+    <aside class="footer-aside" aria-label="Project credits">
+      <span class="footer-aside-label">Credits</span>
+      <p class="footer-meta">Group 3</p>
+      <ul class="footer-team">
+        <li>Xiuyuan</li>
+        <li>Jackson</li>
+        <li>Flowen</li>
+        <li>Domi</li>
+      </ul>
+    </aside>
+  </div>
+</footer>
+
+</body>
+</html>

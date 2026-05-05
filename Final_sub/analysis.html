@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StopAtlas — Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="stylesheet.css">
+</head>
+<body class="analysis-hub-page">
+
+<!-- ── Masthead ── -->
+<div class="masthead">
+  <div class="masthead-logo">
+    <img src="logo_lower.png" alt="StopAtlas Logo"> 
+  </div>
+  <nav class="masthead-nav">
+    <a href="index.html">Home</a>
+    <a href="map.html">Map</a>
+    <a href="analysis.html" class="active">Analysis</a>
+    <a href="resources.html">Resources</a>
+  </nav>
+</div>
+
+<!-- ── Sticky sub-nav (slides in after card click) ── -->
+<div class="section-nav section-nav--hub" id="sectionNav">
+  <a href="geography.html" id="navGeo">Geography</a>
+  <a href="time.html"      id="navTime">Time</a>
+  <a href="outcome.html"   id="navOut">Outcomes</a>
+  <a href="demographics.html" id="navDemo">Demographics</a>
+</div>
+
+<!-- ── Page Header ── -->
+<div class="page-header page-header--hub">
+  <!-- <div class="page-eyebrow">Data Analysis · ca_san_francisco_50k.csv · 50,000 Records</div> -->
+  <h1>Exploring SF Traffic Stops</h1>
+  <p>We analyze the data from the following four perspectives to reach our conclusion.</p>
+</div>
+
+<!-- ── Dimension Cards ── -->
+<div class="cards-stage">
+
+  <!-- Geography -->
+  <div class="dim-card geo" id="card-geo" onclick="navigateTo('geography.html', this, 'geo')">
+    <div class="card-num">01 / 04</div>
+    <div class="card-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+        <circle cx="12" cy="9" r="2.5"/>
+      </svg>
+    </div>
+    <div class="card-title">Geography</div>
+    <div class="card-subtitle">Where do stops happen?</div>
+   
+    <div class="card-cta">Explore spatial patterns <span class="card-cta-arrow">→</span></div>
+  </div>
+
+  <!-- Time -->
+  <div class="dim-card time" id="card-time" onclick="navigateTo('time.html', this, 'time')">
+    <div class="card-num">02 / 04</div>
+    <div class="card-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <polyline points="12 7 12 12 15.5 15.5"/>
+      </svg>
+    </div>
+    <div class="card-title">Time</div>
+    <div class="card-subtitle">When do stops occur?</div>
+   
+    <div class="card-cta">Explore temporal patterns <span class="card-cta-arrow">→</span></div>
+  </div>
+
+  <!-- Outcomes -->
+  <div class="dim-card out" id="card-out" onclick="navigateTo('outcome.html', this, 'out')">
+    <div class="card-num">03 / 04</div>
+    <div class="card-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+    </div>
+    <div class="card-title">Outcomes</div>
+    <div class="card-subtitle">What happens after a stop?</div>
+    <div class="card-cta">Explore enforcement outcomes <span class="card-cta-arrow">→</span></div>
+  </div>
+
+  <!-- Demographics -->
+  <div class="dim-card demo" id="card-demo" onclick="navigateTo('demographics.html', this, 'demo')">
+    <div class="card-num">04 / 04</div>
+    <div class="card-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="9" cy="7" r="3"/>
+        <circle cx="17" cy="7" r="3" opacity="0.5"/>
+        <path d="M3 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/>
+        <path d="M19 11a3 3 0 0 1 0 6" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="card-title">Demographics</div>
+    <div class="card-subtitle">Who gets stopped?</div>
+    <div class="card-cta">Explore demographic patterns <span class="card-cta-arrow">→</span></div>
+  </div>
+
+</div>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="masthead-logo">
+        <img src="logo_lower.png" alt="StopAtlas Logo">
+      </div>
+      <p class="footer-lede">Exploring patterns in traffic stops across the United States</p>
+      <p class="footer-desc">Starting with San Francisco.</p>
+    </div>
+
+    <aside class="footer-aside" aria-label="Project credits">
+      <span class="footer-aside-label">Credits</span>
+      <p class="footer-meta">Group 3</p>
+      <ul class="footer-team">
+        <li>Xiuyuan</li>
+        <li>Jackson</li>
+        <li>Flowen</li>
+        <li>Domi</li>
+      </ul>
+    </aside>
+  </div>
+</footer>
+
+<!-- ── Page transition overlay ── -->
+<div class="page-transition-overlay" id="overlay">
+  <div class="transition-circle" id="transCircle"></div>
+</div>
+
+<script>
+  const accentHex = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  const colors = { geo: accentHex, time: accentHex, out: accentHex, demo: accentHex };
+
+  const navLinks = {
+    geo:  document.getElementById('navGeo'),
+    time: document.getElementById('navTime'),
+    out:  document.getElementById('navOut'),
+    demo: document.getElementById('navDemo'),
+  };
+
+  /** BFCache restores the page mid-transition; clear overlay so back navigation is not stuck on solid color. */
+  function resetTransitionOverlay() {
+    const overlay = document.getElementById('overlay');
+    const circle = document.getElementById('transCircle');
+    if (overlay) {
+      overlay.classList.remove('active');
+      overlay.style.opacity = '';
+    }
+    if (circle) {
+      circle.removeAttribute('style');
+    }
+    const subNav = document.getElementById('sectionNav');
+    if (subNav) {
+      subNav.classList.remove('visible');
+    }
+    document.querySelectorAll('#sectionNav a.active').forEach(a => a.classList.remove('active'));
+  }
+
+  window.addEventListener('pageshow', () => {
+    resetTransitionOverlay();
+  });
+
+  function navigateTo(href, cardEl, type) {
+    // 1. Brief press effect
+    cardEl.classList.add('activating');
+
+    // 2. Show sticky nav bar (slides down)
+    const nav = document.getElementById('sectionNav');
+    nav.classList.add('visible');
+
+    // Mark the right nav link as active
+    Object.values(navLinks).forEach(l => l.classList.remove('active'));
+    navLinks[type].classList.add('active');
+
+    // 3. After nav settles, trigger expanding circle wipe
+    setTimeout(() => {
+      cardEl.classList.remove('activating');
+
+      // Get card center for origin point
+      const rect = cardEl.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top  + rect.height / 2;
+
+      // Size the circle so it covers the whole viewport from that origin
+      const maxDim = Math.max(
+        Math.hypot(cx, cy),
+        Math.hypot(window.innerWidth - cx, cy),
+        Math.hypot(cx, window.innerHeight - cy),
+        Math.hypot(window.innerWidth - cx, window.innerHeight - cy)
+      ) * 2 + 40;
+
+      const overlay = document.getElementById('overlay');
+      const circle  = document.getElementById('transCircle');
+
+      circle.style.width  = maxDim + 'px';
+      circle.style.height = maxDim + 'px';
+      circle.style.left   = (cx - maxDim / 2) + 'px';
+      circle.style.top    = (cy - maxDim / 2) + 'px';
+      circle.style.background = colors[type];
+      circle.style.opacity = '1';
+      circle.style.transform = 'scale(0)';
+
+      overlay.classList.add('active');
+      overlay.style.opacity = '1';
+
+      // Force reflow then animate
+      circle.getBoundingClientRect();
+      circle.style.transition = 'transform 0.65s cubic-bezier(0.4, 0, 0.2, 1)';
+      circle.style.transform  = 'scale(1)';
+
+      // Navigate once circle covers screen
+      setTimeout(() => {
+        window.location.href = href;
+      }, 620);
+
+    }, 160);
+  }
+
+  // Keyboard accessibility: Enter/Space on cards
+  document.querySelectorAll('.dim-card').forEach(card => {
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('role', 'button');
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        card.click();
+      }
+    });
+  });
+</script>
+</body>
+</html>

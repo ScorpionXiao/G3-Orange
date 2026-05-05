@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StopAtlas - Demographics</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="stylesheet.css">
+</head>
+<body class="demographics-page">
+
+<!-- Nav -->
+<div class="masthead">
+  <div class="masthead-logo">
+  <img src="logo_lower.png" alt="StopAtlas Logo">
+</div>
+<nav class="masthead-nav">
+    <a href="index.html">Home</a>
+    <a href="map.html">Map</a>
+    <a href="analysis.html" class="active">Analysis</a>
+    <a href="resources.html">Resources</a>
+  </nav>
+</div>
+<div class="section-nav">
+  <a href="geography.html">Geography</a>
+  <a href="time.html">Time</a>
+  <a href="outcome.html">Outcomes</a>
+  <a href="demographics.html" class="active">Demographics</a>
+</div>
+
+<section class="data-section" id="demographics">
+  <div class="section-label">Task 4 · Demographic Analysis</div>
+  <div class="section-title">Who gets stopped — and what happens to them?</div>
+  <div class="section-desc">Enforcement outcomes broken down by race and age group. Under the same stop conditions, different demographic groups show different arrest rates, which warrants careful examination.</div>
+  <div class="analysis-block">
+    <p>
+      Outcome distributions vary across racial groups even when controlling for stop reason.
+      Black and Hispanic drivers show higher arrest rates compared to white and Asian/Pacific Islander drivers, a pattern that is consistent across the dataset.
+    </p>
+    <p>
+      These differences do not by themselves establish causation, but they indicate that demographic group is associated with enforcement outcome in ways that deserve closer examination. Conclusions here should be framed as correlational, not causal.
+    </p>
+  </div>
+
+  <!-- Table 4a: Race -->
+  <div class="demo-subsection-label demo-subsection-label--after-intro">By Race</div>
+  <div class="table-wrap" style="margin-bottom:48px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Race</th>
+          <th>Total Stops</th>
+          <th>Warning %</th>
+          <th>Citation %</th>
+          <th>Arrest %</th>
+        </tr>
+      </thead>
+      <tbody id="table4a-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Table 4b: Age -->
+  <div class="demo-subsection-label">By Age Group</div>
+  <div class="table-wrap" style="margin-bottom:48px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Age Group</th>
+          <th>Total Stops</th>
+          <th>Arrests</th>
+          <th>Arrest Rate</th>
+        </tr>
+      </thead>
+      <tbody id="table4b-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Charts -->
+  <div class="analysis-stack">
+    <div class="analysis-row">
+      <div class="chart-card analysis-chart">
+        <div class="chart-header">
+          <div class="chart-title">Outcome breakdown by race (stacked bar)</div>
+          <div class="chart-label">Chart 1 of 3</div>
+        </div>
+        <div class="chart-wrap"><canvas id="c4a"></canvas></div>
+      </div>
+      <div class="analysis-note">
+        <h3>Outcomes by race</h3>
+        <p>The stacked bars compare warning, citation, and arrest shares within each racial group. Shifts in the arrest segment show where enforcement outcomes diverge most sharply across groups.</p>
+      </div>
+    </div>
+    <div class="analysis-row">
+      <div class="chart-card analysis-chart">
+        <div class="chart-header">
+          <div class="chart-title">Arrest rate by race</div>
+          <div class="chart-label">Chart 2 of 3</div>
+        </div>
+        <div class="chart-wrap"><canvas id="c4b"></canvas></div>
+      </div>
+      <div class="analysis-note">
+        <h3>Arrest share</h3>
+        <p>This view isolates arrest rate alone. Darker bars emphasize groups with arrest percentages above the chart’s mid threshold, making cross-group contrasts easier to read at a glance.</p>
+      </div>
+    </div>
+    <div class="analysis-row">
+      <div class="chart-card analysis-chart">
+        <div class="chart-header">
+          <div class="chart-title">Arrest rate by age group</div>
+          <div class="chart-label">Chart 3 of 3</div>
+        </div>
+        <div class="chart-wrap"><canvas id="c4c"></canvas></div>
+      </div>
+      <div class="analysis-note">
+        <h3>Age and arrests</h3>
+        <p>After excluding the residual “Other” age bucket, the age bracket with the <strong>highest arrest rate</strong> is drawn in the deep accent color so it stands out against the other bands for quick comparison.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="analysis-block">
+    <div class="analysis-kicker">Key Takeaway</div>
+    <p>
+      The data shows that arrest rates are not uniform across demographic groups. These patterns are consistent across the dataset and suggest that demographic analysis should be a central part of any complete examination of enforcement outcomes.
+    </p>
+    <p>
+      Note: correlation is not causation. Differences in arrest rate may reflect many factors including stop reason distribution, neighborhood, and other variables not fully controlled for here.
+    </p>
+  </div>
+</section>
+
+<script>
+const ACCENT_RGB = '207,134,75';
+const SAGE = '#e2b0a0';
+const WARM_GOLD = '#c9a27a';
+const ACCENT_DEEP = '#9a5a2f';
+const MUTED = '#7a746b';
+
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size   = 12;
+Chart.defaults.color       = MUTED;
+
+function renderDemographics(T4a, T4b) {
+
+  // ── Table 4a: race ────────────────────────────────────────────────────
+  const tbody4a = document.getElementById('table4a-body');
+  const maxTotal = Math.max(...T4a.map(d => +d.total));
+  T4a.forEach(d => {
+    const w = Math.round(80 * d.total / maxTotal);
+    tbody4a.innerHTML += `<tr>
+      <td><strong>${d.race}</strong></td>
+      <td class="num">
+        <div class="pct-bar-cell">
+          <div class="pct-bar teal" style="width:${w}px"></div>
+          <span>${(+d.total).toLocaleString()}</span>
+        </div>
+      </td>
+      <td class="num">${d.warning_pct}%</td>
+      <td class="num">${d.citation_pct}%</td>
+      <td class="num ${d.arrest_pct > 2 ? 'accent' : ''}">${d.arrest_pct}%</td>
+    </tr>`;
+  });
+
+  // ── Table 4b: age ─────────────────────────────────────────────────────
+  const tbody4b = document.getElementById('table4b-body');
+  const maxAgeArrestPct = T4b.length ? Math.max(...T4b.map(d => +d.arrest_pct)) : 0;
+  T4b.forEach(d => {
+    const isTopAge = +d.arrest_pct === maxAgeArrestPct && maxAgeArrestPct > 0;
+    tbody4b.innerHTML += `<tr>
+      <td><strong>${d.age_group}</strong></td>
+      <td class="num">${(+d.total).toLocaleString()}</td>
+      <td class="num">${(+d.arrests).toLocaleString()}</td>
+      <td class="num ${isTopAge ? 'accent' : ''}">${d.arrest_pct}%</td>
+    </tr>`;
+  });
+
+  const chartBox = { responsive: true, maintainAspectRatio: false };
+
+  // ── Chart 4a: stacked bar race x outcome ─────────────────────────────
+  new Chart(document.getElementById('c4a'), {
+    type: 'bar',
+    data: {
+      labels: T4a.map(d => d.race),
+      datasets: [
+        {label:'Warning %',  data:T4a.map(d=>+d.warning_pct),  backgroundColor:SAGE, borderRadius:0, borderSkipped:false},
+        {label:'Citation %', data:T4a.map(d=>+d.citation_pct), backgroundColor:'rgba('+ACCENT_RGB+',0.42)', borderRadius:0, borderSkipped:false},
+        {label:'Arrest %',   data:T4a.map(d=>+d.arrest_pct),   backgroundColor:ACCENT_DEEP,  borderRadius:0, borderSkipped:false},
+      ]
+    },
+    options: {
+      ...chartBox,
+      plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10 } } },
+      scales:{
+        x:{ stacked:true, grid:{ display:false } },
+        y:{ stacked:true, max:100, ticks:{ callback:v=>v+'%' }, grid:{ color:'rgba(0,0,0,0.05)' } }
+      }
+    }
+  });
+
+  // ── Chart 4b: arrest rate by race only ───────────────────────────────
+  new Chart(document.getElementById('c4b'), {
+    type: 'bar',
+    data: {
+      labels: T4a.map(d => d.race),
+      datasets: [{
+        label: 'Arrest %',
+        data: T4a.map(d => +d.arrest_pct),
+        backgroundColor: T4a.map(d => +d.arrest_pct > 2 ? ACCENT_DEEP : WARM_GOLD),
+        borderRadius: 3,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      ...chartBox,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:{ display:false } },
+        y:{ ticks:{ callback:v=>v+'%' }, grid:{ color:'rgba(0,0,0,0.05)' } }
+      }
+    }
+  });
+
+  // ── Chart 4c: arrest rate by age group (highlight max rate bar) ───────
+  const ageBarColors = T4b.map(d =>
+    +d.arrest_pct === maxAgeArrestPct && maxAgeArrestPct > 0 ? ACCENT_DEEP : SAGE
+  );
+  new Chart(document.getElementById('c4c'), {
+    type: 'bar',
+    data: {
+      labels: T4b.map(d => d.age_group),
+      datasets: [{
+        label: 'Arrest %',
+        data: T4b.map(d => +d.arrest_pct),
+        backgroundColor: ageBarColors,
+        borderRadius: 3,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      ...chartBox,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:{ display:false } },
+        y:{ ticks:{ callback:v=>v+'%' }, grid:{ color:'rgba(0,0,0,0.05)' } }
+      }
+    }
+  });
+}
+
+async function loadAll() {
+  try {
+    const [r4a, r4b] = await Promise.all([
+      fetch('data_api.php?task=4a').then(r => r.json()),
+      fetch('data_api.php?task=4b').then(r => r.json()),
+    ]);
+    renderDemographics(r4a.data, r4b.data);
+  } catch(err) {
+    console.error('Failed to load data:', err);
+    document.body.insertAdjacentHTML('afterbegin',
+      `<div style="background:#9a5a2f;color:#fff;padding:12px 64px;font-family:monospace;font-size:12px;">
+        ⚠ Could not load data from data_api.php — make sure both files are on the same server.
+      </div>`);
+  }
+}
+
+loadAll();
+</script>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="masthead-logo">
+        <img src="logo_lower.png" alt="StopAtlas Logo">
+      </div>
+      <p class="footer-lede">Exploring patterns in traffic stops across the United States</p>
+      <p class="footer-desc">Starting with San Francisco.</p>
+    </div>
+
+    <aside class="footer-aside" aria-label="Project credits">
+      <span class="footer-aside-label">Credits</span>
+      <p class="footer-meta">Group 3</p>
+      <ul class="footer-team">
+        <li>Xiuyuan</li>
+        <li>Jackson</li>
+        <li>Flowen</li>
+        <li>Domi</li>
+      </ul>
+    </aside>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StopAtlas — Data</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="stylesheet.css">
+</head>
+<body class="geography-page">
+
+<!-- Nav -->
+<div class="masthead">
+  <div class="masthead-logo">
+  <img src="logo_lower.png" alt="StopAtlas Logo">
+</div>
+<nav class="masthead-nav">
+    <a href="index.html">Home</a>
+    <a href="map.html">Map</a>
+    <a href="analysis.html" class="active">Analysis</a>
+    <a href="resources.html">Resources</a>
+  </nav>
+</div>
+<div class="section-nav">
+  <a href="geography.html" class="active">Geography</a>
+  <a href="time.html">Time</a>
+  <a href="outcome.html">Outcomes</a>
+  <a href="demographics.html">Demographics</a>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION 1 — WHERE (Spatial)
+════════════════════════════════════════════════════════ -->
+<section class="data-section" id="spatial">
+  <div class="section-label">Task 1 · Spatial Analysis</div>
+  <div class="section-title">Where do stops happen?</div>
+  <div class="section-desc">Stop frequency by SFPD district, revealing which neighborhoods see the highest policing activity.</div>
+
+  <div class="analysis-block">
+    <p>
+      Stop counts vary sharply across the city’s police districts: a few areas account for a disproportionate share of observations, while others register far fewer. The table and maps below summarize that imbalance using the district letter codes recorded in the dataset, aligned to SFPD boundary geography where possible.
+    </p>
+    <p>
+      Spatial clustering matters for how we read these numbers—enforcement intensity follows corridors and neighborhoods rather than a uniform grid. The patterns here are descriptive; they highlight where stops concentrate, not why those concentrations occur.
+    </p>
+  </div>
+
+  <!-- Table 1 -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+  <tr>
+    <th>Rank</th>
+    <th>Code</th>
+    <th>District Name</th>
+    <th>Total Stops</th>
+    <th>% of All Stops</th>
+    <th>Relative Volume</th>
+    </tr>
+    </thead>
+    <tbody id="table1-body"></tbody>
+    </table>
+  </div>
+
+  <div class="analysis-stack">
+    <div class="analysis-row">
+      <div class="chart-card analysis-chart">
+        <div class="chart-header">
+          <div class="chart-title">SFPD district boundaries</div>
+          <div class="chart-label">Chart 1 of 2</div>
+        </div>
+        <div id="districtBoundaryMap" class="map-wrap" role="img" aria-label="SFPD districts map"></div>
+      </div>
+      <div class="analysis-note">
+        <h3>District boundaries &amp; codes</h3>
+        <p>
+          Polygons come from <code>data/sfpd_districts.geojson</code>, using each feature’s <strong>DISTRICT</strong> name so outlines match official SFPD geography. Fill colors and labels include letter codes <strong>A–J</strong> as recorded in <code>ca_san_francisco_50k</code> (San Francisco’s mapping differs from the generic Open Policing district list). The basemap uses the same muted tile treatment as the main map page for a consistent look.
+        </p>
+        <p>
+          Stop counts are heavily skewed toward a few districts: <strong>Ingleside, Richmond, and Southern</strong> each account for a large share of stops (well above most others), while several districts fall under roughly 5%. That imbalance means enforcement intensity is concentrated in specific corridors rather than spread evenly across the city.
+        </p>
+      </div>
+    </div>
+
+    <div class="analysis-row">
+      <div class="chart-card analysis-chart">
+        <div class="chart-header">
+          <div class="chart-title">Stop locations on the map</div>
+          <div class="chart-label">Chart 2 of 2</div>
+        </div>
+        <div id="geoMap" class="map-wrap"></div>
+      </div>
+      <div class="analysis-note">
+        <h3>Spatial concentration</h3>
+        <p>
+          Stops are not evenly distributed across San Francisco. Instead, they form several clear clusters concentrated in specific corridors, particularly in the central and southeastern parts of the city.
+        </p>
+        <p>
+          The map shows that areas such as Mission, Ingleside, and Bayview have noticeably higher densities of stops, while large portions of the western districts remain relatively sparse. This suggests that stop activity is closely tied to particular urban zones rather than spread uniformly.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+const ACCENT = '#D8B18A';
+
+/** Letters A–J in ca_san_francisco_50k → SFPD district names (not the generic OPP template). */
+const districtNames = {
+  A: 'Central',
+  B: 'Southern',
+  C: 'Bayview',
+  D: 'Mission',
+  E: 'Northern',
+  F: 'Park',
+  G: 'Richmond',
+  H: 'Ingleside',
+  I: 'Taraval',
+  J: 'Tenderloin'
+};
+
+/** GeoJSON properties.DISTRICT (uppercase) → dataset letter — aligns polygon shapes with labels and charts. */
+const sfpdDistrictToDatasetCode = {
+  CENTRAL: 'A',
+  SOUTHERN: 'B',
+  BAYVIEW: 'C',
+  MISSION: 'D',
+  NORTHERN: 'E',
+  PARK: 'F',
+  RICHMOND: 'G',
+  INGLESIDE: 'H',
+  TARAVAL: 'I',
+  TENDERLOIN: 'J'
+};
+
+const districtColors = {
+  A: '#cf864b',
+  B: '#9a5a2f',
+  C: '#8a9388',
+  D: '#c9a27a',
+  E: '#b87a5c',
+  F: '#d4a574',
+  G: '#a67c52',
+  H: '#7d6b5f',
+  I: '#e2b48c',
+  J: '#b89a82'
+};
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"' && inQuotes && next === '"') {
+      field += '"';
+      i++;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      row.push(field);
+      field = '';
+    } else if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (field !== '' || row.length) {
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = '';
+      }
+      if (char === '\r' && next === '\n') i++;
+    } else {
+      field += char;
+    }
+  }
+
+  if (field !== '' || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function csvToObjects(text) {
+  const rows = parseCSV(text.trim());
+  const headers = rows.shift().map(h => h.trim());
+
+  return rows
+    .filter(r => r.some(cell => cell.trim() !== ''))
+    .map(r => {
+      const obj = {};
+      headers.forEach((h, i) => {
+        obj[h] = (r[i] ?? '').trim();
+      });
+      return obj;
+    });
+}
+
+function shuffle(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function formatExcelDate(value) {
+  if (!value) return '';
+  // Date is now stored as M/D/YYYY string (e.g. '1/8/2012') — return as-is
+  return value;
+}
+
+function formatClock(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return value ?? '';
+  // time is seconds since midnight
+  const total = Math.round(n);
+  const h = Math.floor(total / 3600) % 24;
+  const m = Math.floor((total % 3600) / 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function districtLabel(code) {
+  return districtNames[code] || code || 'Unknown';
+}
+
+function districtColor(code) {
+  return districtColors[code] || ACCENT;
+}
+
+function sampleByDistrict(rows, perDistrict = 3, maxRows = 30) {
+  const groups = {};
+  rows.forEach(d => {
+    const key = d.district || 'Unknown';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(d);
+  });
+
+  const sampled = [];
+  Object.keys(groups).forEach(key => {
+    sampled.push(...shuffle(groups[key]).slice(0, perDistrict));
+  });
+
+  return sampled.slice(0, maxRows);
+}
+
+function renderTable(districtRows) {
+  const tbody = document.getElementById('table1-body');
+  tbody.innerHTML = '';
+
+  const excludeCodes = new Set(['K', 'S', 'T']);
+  const grandTotal = districtRows.reduce((s, d) => s + Number(d.stop_count), 0);
+  const visible = districtRows.filter((d) =>
+    !excludeCodes.has(String(d.district_code || '').trim().toUpperCase())
+  );
+  const max = visible.length
+    ? Math.max(...visible.map((d) => Number(d.stop_count)))
+    : 0;
+
+  visible.forEach((d, i) => {
+    const count = Number(d.stop_count);
+    const pct   = grandTotal > 0 ? (100 * count / grandTotal).toFixed(1) : '0.0';
+    const barW  = max > 0 ? Math.round(120 * count / max) : 0;
+    const name  = districtNames[d.district_code] || d.district_code || '—';
+    const color = districtColors[d.district_code] || ACCENT;
+
+    tbody.innerHTML += `
+      <tr>
+        <td class="num">${i + 1}</td>
+        <td class="num accent">${d.district_code}</td>
+        <td><strong>${name}</strong></td>
+        <td class="num">${count.toLocaleString()}</td>
+        <td class="num">${pct}%</td>
+        <td>
+          <div class="pct-bar-cell">
+            <div class="pct-bar" style="width:${barW}px; background:${color};"></div>
+            <span style="font-size:11px;color:var(--ink-light)">${count.toLocaleString()}</span>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+function getFillOpacity(count, maxCount) {
+  const t = Math.min(1, Math.max(0, count / maxCount));
+  return 0.08 + t * 0.2; // 0.12 ~ 0.30，叠起来不会那么糊
+}
+
+function getColor(count, max) {
+  const t = Math.min(1, count / max); // 0 ~ 1
+
+  const r1 = 226, g1 = 180, b1 = 140;   // accent-soft
+  const r2 = 154, g2 = 90,  b2 = 47;    // accent-deep
+
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/** Approximate label anchor inside polygon. */
+function geometryLabelPoint(geom) {
+  function centroidRing(ring) {
+    let sx = 0;
+    let sy = 0;
+    ring.forEach(([lng, lat]) => {
+      sx += lng;
+      sy += lat;
+    });
+    const n = ring.length || 1;
+    return [sy / n, sx / n];
+  }
+  if (geom.type === 'Polygon') return centroidRing(geom.coordinates[0]);
+  if (geom.type === 'MultiPolygon') {
+    let best = null;
+    geom.coordinates.forEach((poly) => {
+      const ring = poly[0];
+      if (!best || ring.length > best.n) best = { ring: ring, n: ring.length };
+    });
+    if (best) return centroidRing(best.ring);
+  }
+  return [37.76, -122.42];
+}
+
+async function renderDistrictBoundaryMap() {
+  const host = document.getElementById('districtBoundaryMap');
+  if (!host) return;
+
+  let gj;
+  try {
+    const res = await fetch('data/sfpd_districts.geojson');
+    if (!res.ok) throw new Error(res.statusText);
+    gj = await res.json();
+  } catch (e) {
+    console.warn('[district map] GeoJSON load failed', e);
+    host.innerHTML =
+      '<p style="padding:16px;color:var(--ink-light);font-size:14px;">Could not load <code>data/sfpd_districts.geojson</code>. Add the file to the project <code>data/</code> folder.</p>';
+    return;
+  }
+
+  const features = gj.features || [];
+
+  const map = L.map('districtBoundaryMap', {
+    scrollWheelZoom: false,
+    zoomControl: true,
+    attributionControl: true
+  }).setView([37.76, -122.42], 11);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const mapEl = map.getContainer();
+  mapEl.addEventListener('mouseenter', () => {
+    map.scrollWheelZoom.enable();
+  });
+  mapEl.addEventListener('mouseleave', () => {
+    map.scrollWheelZoom.disable();
+  });
+
+  const layerGroup = L.layerGroup().addTo(map);
+  let combinedBounds = null;
+
+  features.forEach((feat) => {
+    const rawDist = feat.properties && feat.properties.DISTRICT;
+    const upper = String(rawDist || '').trim().toUpperCase();
+    const code = sfpdDistrictToDatasetCode[upper];
+    const geoLayer = L.geoJSON(feat, {
+      style: {
+        color: ACCENT,
+        weight: 2.5,
+        opacity: 1,
+        fillColor: ACCENT,
+        fillOpacity: 0
+      }
+    }).addTo(layerGroup);
+    const b = geoLayer.getBounds();
+    combinedBounds = combinedBounds ? combinedBounds.extend(b) : b;
+
+    const pt = geometryLabelPoint(feat.geometry);
+    const fallbackName = upper
+      ? upper
+          .toLowerCase()
+          .split(/[\s_]+/)
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ')
+      : 'District';
+    const lineText = code
+      ? `${districtLabel(code)}-${code}`
+      : `${fallbackName}-—`;
+
+    const icon = L.divIcon({
+      html: `<div class="district-map-label"><span class="district-map-name-line">${lineText}</span></div>`,
+      className: 'district-map-divicon',
+      iconSize: [168, 22],
+      iconAnchor: [84, 11]
+    });
+    L.marker(pt, { icon }).addTo(layerGroup);
+  });
+
+  if (combinedBounds && combinedBounds.isValid()) {
+    map.fitBounds(combinedBounds.pad(0.06));
+  }
+}
+
+function renderMap(rows) {
+  const map = L.map('geoMap', {
+    scrollWheelZoom: false,
+    zoomControl: true,
+    attributionControl: true
+  }).setView([37.76, -122.42], 12);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const maxCount = Math.max(...rows.map(d => Number(d.stop_count) || 0));
+  const bounds = [];
+
+  // 鼠标移入地图区域后，才允许滚轮缩放
+  const mapEl = map.getContainer();
+  mapEl.addEventListener('mouseenter', () => {
+    map.scrollWheelZoom.enable();
+  });
+  mapEl.addEventListener('mouseleave', () => {
+    map.scrollWheelZoom.disable();
+  });
+
+  rows.forEach(d => {
+    const lat = Number(d.lat);
+    const lng = Number(d.lng);
+    const count = Number(d.stop_count) || 0;
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    const radius = 2 + Math.sqrt(count / maxCount) * 10;
+   const fillOpacity = getFillOpacity(count, maxCount);
+    const color = getColor(count, maxCount);
+
+    const marker = L.circleMarker([lat, lng], {
+  radius,
+  color: color,
+  weight: 1,
+  opacity: 0.4,
+  fillColor: color,
+  fillOpacity
+});
+
+    marker.bindPopup(`
+      <strong>${d.location || 'Unknown location'}</strong><br>
+      District: ${districtLabel(d.district)}<br>
+      Stops: ${count.toLocaleString()}<br>
+      ${formatExcelDate(d.date)} ${formatClock(d.time)}
+    `);
+
+    marker.addTo(map);
+    bounds.push([lat, lng]);
+  });
+
+ 
+}
+
+async function loadAll() {
+  try {
+    const [r1, rGeo] = await Promise.all([
+      fetch('data_api.php?task=1').then(r => r.json()),
+      fetch('data_api.php?task=geo').then(r => r.json())
+    ]);
+
+    renderTable(r1.data);
+    await renderDistrictBoundaryMap();
+    renderMap(rGeo.data);
+  } catch (err) {
+    console.error('Failed to load data:', err);
+    document.body.insertAdjacentHTML(
+      'afterbegin',
+      `<div style="background:#9a5a2f;color:#fff;padding:12px 64px;font-family:monospace;font-size:12px;">
+        ⚠ Could not load from data_api.php — make sure both files are on the same server.
+      </div>`
+    );
+  }
+}
+
+loadAll();
+</script>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="masthead-logo">
+        <img src="logo_lower.png" alt="StopAtlas Logo">
+      </div>
+      <p class="footer-lede">Exploring patterns in traffic stops across the United States</p>
+      <p class="footer-desc">Starting with San Francisco.</p>
+    </div>
+
+    <aside class="footer-aside" aria-label="Project credits">
+      <span class="footer-aside-label">Credits</span>
+      <p class="footer-meta">Group 3</p>
+      <ul class="footer-team">
+        <li>Xiuyuan</li>
+        <li>Jackson</li>
+        <li>Flowen</li>
+        <li>Domi</li>
+      </ul>
+    </aside>
+  </div>
+</footer>
+
+</body>
+</html>

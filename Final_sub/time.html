@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StopAtlas - Time</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="stylesheet.css">
+</head>
+<body class="time-page">
+
+<!-- Nav -->
+<div class="masthead">
+  <div class="masthead-logo">
+  <img src="logo_lower.png" alt="StopAtlas Logo">
+</div>
+<nav class="masthead-nav">
+    <a href="index.html">Home</a>
+    <a href="map.html">Map</a>
+    <a href="analysis.html" class="active">Analysis</a>
+    <a href="resources.html">Resources</a>
+  </nav>
+</div>
+<div class="section-nav">
+  <a href="geography.html">Geography</a>
+  <a href="time.html" class="active">Time</a>
+  <a href="outcome.html">Outcomes</a>
+  <a href="demographics.html">Demographics</a>
+</div>
+
+<section class="data-section" id="temporal">
+  <div class="section-label">Task 2 · Temporal Analysis</div>
+  <div class="section-title">When do stops happen?</div>
+  <div class="section-desc">Stop patterns by hour of day, day of week, and month. Peaks around midnight and the evening commute (5–6 PM) suggest enforcement patterns tied to specific conditions.</div>
+  <div class="analysis-block">
+    <p>
+      Stop activity is not constant throughout the day. Instead, it rises and falls in recognizable time windows, with stronger concentrations in late afternoon and evening periods.
+      This suggests that traffic stops are shaped by daily mobility patterns rather than occurring randomly across time.
+    </p>
+    <p>
+      Weekly totals also vary, which indicates that stop activity changes across the broader rhythm of weekday and weekend travel.
+      Time therefore matters not just at the hourly level, but also at the level of recurring weekly behavior.
+    </p>
+  </div>
+
+  <!-- Table 2 -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Time Period</th>
+          <th>Category</th>
+          <th>Stop Count</th>
+          <th>% of Segment Total</th>
+        </tr>
+      </thead>
+      <tbody id="table2-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Charts 2 -->
+  <div class="analysis-stack">
+    <div class="analysis-row">
+      <div class="chart-card analysis-chart">
+        <div class="chart-header">
+          <div class="chart-title">Stops by hour of day (line)</div>
+          <div class="chart-label">Chart 1 of 3</div>
+        </div>
+        <div class="chart-wrap"><canvas id="c2a"></canvas></div>
+      </div>
+      <div class="analysis-note">
+        <h3>Hourly rhythm</h3>
+        <p>Stop counts rise and fall across the day in recognizable windows, with stronger concentrations in late afternoon and evening. That pattern points to daily mobility and enforcement intensity rather than a flat random distribution across hours.</p>
+      </div>
+    </div>
+    <div class="analysis-row">
+      <div class="chart-card analysis-chart">
+        <div class="chart-header">
+          <div class="chart-title">Stops by day of week</div>
+          <div class="chart-label">Chart 2 of 3</div>
+        </div>
+        <div class="chart-wrap"><canvas id="c2b"></canvas></div>
+      </div>
+      <div class="analysis-note">
+        <h3>Week vs weekend</h3>
+        <p>Weekly totals are uneven: weekday commute and activity rhythms differ from weekend travel. Weekend bars often diverge from midweek levels, which helps explain why “when” matters at both hourly and weekly scales.</p>
+      </div>
+    </div>
+    <div class="analysis-row">
+      <div class="chart-card analysis-chart">
+        <div class="chart-header">
+          <div class="chart-title">Stops by month</div>
+          <div class="chart-label">Chart 3 of 3</div>
+        </div>
+        <div class="chart-wrap"><canvas id="c2c"></canvas></div>
+      </div>
+      <div class="analysis-note">
+        <h3>Month-to-month view</h3>
+        <p>Monthly bars support broad trend inspection, but seasonal interpretation should stay cautious: the series may reflect uneven or partial coverage rather than a complete year of comparable observations.</p>
+      </div>
+    </div>
+  </div>
+  <div class="analysis-block">
+    <div class="analysis-kicker">Key Takeaway</div>
+    <p>
+      The hourly chart shows a clear temporal rhythm, with the strongest concentration in evening hours.
+      The weekday chart also shows that stop totals are uneven across the week rather than flat.
+    </p>
+    <p>
+      The monthly chart is useful for broad trend inspection, but seasonal interpretation should remain cautious because the available monthly totals may reflect uneven or partial coverage rather than a complete year of comparable observations.
+    </p>
+  </div>
+</section>
+
+<script>
+const ACCENT = '#cf864b';
+const ACCENT_RGB = '207,134,75';
+const SAGE = '#8a9388';
+const ACCENT_SOFT = '#e2b48c';
+const MUTED = '#7a746b';
+
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size   = 12;
+Chart.defaults.color       = MUTED;
+
+function normalizeHours(rows) {
+  const merged = new Map();
+
+  rows.forEach((row) => {
+    const hour = (+row.hour === 24) ? 0 : +row.hour;
+    const current = merged.get(hour) || 0;
+    merged.set(hour, current + (+row.stop_count));
+  });
+
+  return [...merged.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([hour, stop_count]) => ({ hour, stop_count }));
+}
+
+// Render functions (called after data loads)
+
+function renderSection2(T2a, T2b, T2c) {
+  T2a = normalizeHours(T2a);
+  const tbody    = document.getElementById('table2-body');
+  const hourTotal = T2a.reduce((s,d) => s + +d.stop_count, 0);
+
+  // Top 5 busiest hours
+  [...T2a].sort((a,b) => b.stop_count - a.stop_count).slice(0,5).forEach(d => {
+    tbody.innerHTML += `<tr>
+      <td class="num">${String(+d.hour).padStart(2,'0')}:00</td>
+      <td>Hour of Day</td>
+      <td class="num accent">${(+d.stop_count).toLocaleString()}</td>
+      <td class="num">${(100 * d.stop_count / hourTotal).toFixed(1)}%</td>
+    </tr>`;
+  });
+
+  const wdTotal = T2b.reduce((s,d) => s + +d.stop_count, 0);
+  T2b.forEach(d => {
+    tbody.innerHTML += `<tr>
+      <td>${d.weekday}</td>
+      <td>Day of Week</td>
+      <td class="num accent">${(+d.stop_count).toLocaleString()}</td>
+      <td class="num">${(100 * d.stop_count / wdTotal).toFixed(1)}%</td>
+    </tr>`;
+  });
+
+  const chartBox = { responsive: true, maintainAspectRatio: false };
+
+  new Chart(document.getElementById('c2a'), {
+    type: 'line',
+    data: {
+      labels: T2a.map(d => d.hour + ':00'),
+      datasets: [{data:T2a.map(d=>+d.stop_count), borderColor:ACCENT,
+        backgroundColor:'rgba('+ACCENT_RGB+',0.1)', fill:true, tension:0.4,
+        pointRadius:3, pointBackgroundColor:ACCENT}]
+    },
+    options: { ...chartBox, plugins:{legend:{display:false}},
+      scales:{y:{grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false},ticks:{maxTicksLimit:12}}} }
+  });
+
+  new Chart(document.getElementById('c2b'), {
+    type: 'bar',
+    data: {
+      labels: T2b.map(d => d.weekday),
+      datasets: [{data:T2b.map(d=>+d.stop_count),
+        backgroundColor: T2b.map(d => (d.weekday==='Saturday'||d.weekday==='Sunday') ? ACCENT_SOFT : SAGE),
+        borderRadius:3, borderSkipped:false}]
+    },
+    options: { ...chartBox, plugins:{legend:{display:false}}, scales:{y:{grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false}}} }
+  });
+
+  new Chart(document.getElementById('c2c'), {
+    type: 'bar',
+    data: {
+      labels: T2c.map(d => d.month),
+      datasets: [{data:T2c.map(d=>+d.stop_count), backgroundColor:ACCENT, borderRadius:3, borderSkipped:false}]
+    },
+    options: { ...chartBox, plugins:{legend:{display:false}}, scales:{y:{grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false}}} }
+  });
+}
+
+
+// Fetch all data from live API then render
+async function loadAll() {
+  try {
+    const [r2a, r2b, r2c] = await Promise.all([
+      fetch('data_api.php?task=2a').then(r => r.json()),
+      fetch('data_api.php?task=2b').then(r => r.json()),
+      fetch('data_api.php?task=2c').then(r => r.json()),
+    ]);
+
+    renderSection2(r2a.data, r2b.data, r2c.data);
+
+  } catch(err) {
+    console.error('Failed to load data:', err);
+    document.body.insertAdjacentHTML('afterbegin',
+      `<div style="background:#9a5a2f;color:#fff;padding:12px 64px;font-family:monospace;font-size:12px;">
+        ⚠ Could not load data from data_api.php — make sure both files are on the same server.
+      </div>`);
+  }
+}
+
+loadAll();
+</script>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="masthead-logo">
+        <img src="logo_lower.png" alt="StopAtlas Logo">
+      </div>
+      <p class="footer-lede">Exploring patterns in traffic stops across the United States</p>
+      <p class="footer-desc">Starting with San Francisco.</p>
+    </div>
+
+    <aside class="footer-aside" aria-label="Project credits">
+      <span class="footer-aside-label">Credits</span>
+      <p class="footer-meta">Group 3</p>
+      <ul class="footer-team">
+        <li>Xiuyuan</li>
+        <li>Jackson</li>
+        <li>Flowen</li>
+        <li>Domi</li>
+      </ul>
+    </aside>
+  </div>
+</footer>
+
+</body>
+</html>

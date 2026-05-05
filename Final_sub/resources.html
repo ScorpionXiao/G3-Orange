@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StopAtlas — Resources</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="stylesheet.css">
+</head>
+<body class="resources-page">
+
+<!-- Nav -->
+<div class="masthead">
+  <div class="masthead-logo">
+    <img src="logo_lower.png" alt="StopAtlas Logo">
+  </div>
+  <nav class="masthead-nav">
+    <a href="index.html">Home</a>
+    <a href="map.html">Map</a>
+    <a href="analysis.html">Analysis</a>
+    <a href="resources.html" class="active">Resources</a>
+  </nav>
+</div>
+
+<div class="page-header">
+  <div class="page-eyebrow">USC · IDSN 530 · Resource index</div>
+  <h1>Data sources and readings</h1>
+  <p>
+    Curated links to the core dataset, tools used in the project, and research that contextualizes traffic-stop data.
+    These references support reproducibility and help place the San Francisco analysis in wider policy and methods discussions.
+  </p>
+</div>
+
+<main class="resources-main">
+  <div class="resources-grid">
+    <a class="resource-card" href="https://openpolicing.stanford.edu/data/" target="_blank" rel="noopener noreferrer">
+      <div class="resource-meta">
+        <span class="resource-tag">Core dataset</span>
+        <span class="resource-link">Open source</span>
+      </div>
+      <h2>Stanford Open Policing Project — San Francisco data</h2>
+      <p class="resource-summary">
+        This is the project’s main dataset, providing standardized traffic-stop records that make it possible to compare where stops happen, when they happen, and what outcomes follow.
+      </p>
+      <div class="resource-footer">
+        <span class="pill">Traffic stops</span>
+        <span class="pill">CSV / RDS</span>
+        <span class="pill">San Francisco</span>
+      </div>
+    </a>
+
+    <a class="resource-card" href="https://kepler.gl/" target="_blank" rel="noopener noreferrer">
+      <div class="resource-meta">
+        <span class="resource-tag">Visualization tool</span>
+        <span class="resource-link">Official site</span>
+      </div>
+      <h2>Kepler.gl</h2>
+      <p class="resource-summary">
+        Kepler.gl was referenced as a visual and conceptual benchmark for map design, particularly in exploring how dense geospatial data can be effectively represented and communicated.
+      </p>
+      <div class="resource-footer">
+        <span class="pill">Geospatial viz</span>
+        <span class="pill">WebGL</span>
+        <span class="pill">Interactive maps</span>
+      </div>
+    </a>
+
+    <a class="resource-card" href="https://nature.com/articles/s41562-020-0858-1" target="_blank" rel="noopener noreferrer">
+      <div class="resource-meta">
+        <span class="resource-tag">Research paper</span>
+        <span class="resource-link">Read paper</span>
+      </div>
+      <h2>A large-scale analysis of racial disparities in police stops across the United States</h2>
+      <p class="resource-summary">
+        Pierson et al. analyze nearly 100 million traffic stops and show how large-scale stop data can reveal racial disparities in stop decisions and search outcomes.
+      </p>
+      <div class="resource-footer">
+        <span class="pill">Nature Human Behaviour</span>
+        <span class="pill">2020</span>
+      </div>
+    </a>
+
+    <a class="resource-card" href="https://www.ppic.org/publication/racial-disparities-in-traffic-stops/" target="_blank" rel="noopener noreferrer">
+      <div class="resource-meta">
+        <span class="resource-tag">Policy report</span>
+        <span class="resource-link">Read report</span>
+      </div>
+      <h2>Racial Disparities in Traffic Stops</h2>
+      <p class="resource-summary">
+        This PPIC report examines 3.4 million California traffic stops and compares disparities across time of day, agency type, and traffic violation type.
+      </p>
+      <div class="resource-footer">
+        <span class="pill">California</span>
+        <span class="pill">Traffic stops</span>
+        <span class="pill">Racial disparities</span>
+      </div>
+    </a>
+
+    <a class="resource-card" href="https://openpolicing.stanford.edu/findings/" target="_blank" rel="noopener noreferrer">
+      <div class="resource-meta">
+        <span class="resource-tag">Project findings</span>
+        <span class="resource-link">View findings</span>
+      </div>
+      <h2>Stanford Open Policing Project — Findings</h2>
+      <p class="resource-summary">
+        The project’s findings page summarizes the broader statistical patterns behind the dataset and gives context for how racial disparities appear across agencies and stop types.
+      </p>
+      <div class="resource-footer">
+        <span class="pill">Official findings</span>
+        <span class="pill">Methods context</span>
+      </div>
+    </a>
+
+    <a class="resource-card" href="https://www.nature.com/articles/s41562-020-01029-w" target="_blank" rel="noopener noreferrer">
+      <div class="resource-meta">
+        <span class="resource-tag">Research paper</span>
+        <span class="resource-link">Read paper</span>
+      </div>
+      <h2>Officer bias, over-patrolling and ethnic disparities in stop and search</h2>
+      <p class="resource-summary">
+        This study helps frame stop-and-search disparities as the result of both officer behavior and department-level patterns, which is useful when interpreting concentrated stop activity in a single city.
+      </p>
+      <div class="resource-footer">
+        <span class="pill">Comparative research</span>
+        <span class="pill">Ethnic disparity</span>
+        <span class="pill">Stop and search</span>
+      </div>
+    </a>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="masthead-logo">
+        <img src="logo_lower.png" alt="StopAtlas Logo">
+      </div>
+      <p class="footer-lede">Exploring patterns in traffic stops across the United States</p>
+      <p class="footer-desc">Starting with San Francisco.</p>
+    </div>
+
+    <aside class="footer-aside" aria-label="Project credits">
+      <span class="footer-aside-label">Credits</span>
+      <p class="footer-meta">Group 3</p>
+      <ul class="footer-team">
+        <li>Xiuyuan</li>
+        <li>Jackson</li>
+        <li>Flowen</li>
+        <li>Domi</li>
+      </ul>
+    </aside>
+  </div>
+</footer>
+
+</body>
+</html>
