@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StopAtlas — Home</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+  --bg: #fbf3e8;        /* 主背景（FT纸色） */
+  --paper: #fbf3e8;     /* 卡片 */
+  --ink: #424242;      /* 主文字 */
+  --ink-light: #7a746b; /* 次文字 */
+  --rule: #e2d6c6;      /* 分割线 */
+
+  --accent: #cf864b;        /* 主橙 */
+  --accent-soft: #e2b48c;   /* 浅橙 */
+  --accent-deep: #9a5a2f;   /* 深橙 */
+}
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    
+  }
+
+  /* Masthead nav */
+  .masthead {
+    background: var(--ink);
+    padding: 0 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;  
+  }
+
+  .masthead-logo {
+  display: flex;
+  vertical-align: middle;
+  align-items: center;   
+  gap: 10px; 
+  }
+  .masthead-logo img {
+  height: 35px; 
+}
+
+  .masthead-tagline {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: rgba(245,243,238,0.4);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .masthead-nav {
+    display: flex; gap: 28px;
+  }
+
+  .masthead-nav a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: 60px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(245,243,238,0.55);
+    text-decoration: none;
+    letter-spacing: 0.5px;
+    transition: color 0.15s;
+    vertical-align: middle;
+  }
+
+  .masthead-nav a:hover {
+  color: var(--bg);
+}
+
+.masthead-nav a.active {
+  color: var(--bg);
+}
+
+.masthead-nav a.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  height: 2px;
+  background: var(--accent);
+}
+
+  /* Section nav */
+  .section-nav {
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper);
+    padding: 0 64px;
+    display: flex;
+    gap: 0;
+  }
+
+  .section-nav a {
+    display: block;
+    padding: 14px 24px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-light);
+    text-decoration: none;
+    letter-spacing: 0.3px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .section-nav a.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .section-nav a:hover { color: var(--ink); }
+
+  /* Hero */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: calc(100vh - 60px);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .hero-left {
+    padding: 72px 64px 56px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 0;
+  }
+
+  .hero-intro {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(36px, 4vw, 58px);
+    line-height: 1.1;
+    letter-spacing: -1px;
+    color: var(--ink);
+    margin-bottom: 30px;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-body {
+    font-size: 16px;
+    line-height: 1.75;
+    color: var(--ink-light);
+    max-width: 450px;
+    margin-bottom: 0;
+  }
+
+  /* First screen: quiet handoff — no competing actions */
+  .hero-scroll-hint {
+    margin-top: 48px;
+    padding-top: 28px;
+    
+    flex-shrink: 0;
+  }
+
+  .hero-scroll-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--ink-light);
+    font-family: 'DM Serif Display', serif;
+    font-size: 25px;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: color 0.22s ease, transform 0.22s ease;
+  }
+
+  .hero-scroll-label {
+    transition: text-shadow 0.22s ease, transform 0.22s ease;
+  }
+
+  /* CSS-drawn down chevron — hover keeps rotation, only scales + shadow */
+  .read-on::before {
+    content: "";
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-left: 2px solid var(--accent-deep);
+    border-bottom: 2px solid var(--accent-deep);
+    transform: rotate(-45deg);
+    transform-origin: 50% 50%;
+    margin-right: 10px;
+    margin-bottom: 2px;
+    transition: transform 0.22s ease, filter 0.22s ease;
+  }
+
+  .hero-scroll-link:hover {
+    color: var(--ink);
+    transform: scale(1.045);
+  }
+
+  .hero-scroll-link:hover .hero-scroll-label {
+    text-shadow:
+      0 5px 14px rgba(66, 66, 66, 0.16),
+      0 2px 5px rgba(66, 66, 66, 0.08);
+  }
+
+  .hero-scroll-link.read-on:hover::before {
+    transform: rotate(-45deg) scale(1.12);
+    filter: drop-shadow(0 4px 10px rgba(66, 66, 66, 0.18));
+  }
+
+  .hero-scroll-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-scroll-link {
+      transition: color 0.15s ease;
+    }
+
+    .hero-scroll-link:hover {
+      transform: none;
+    }
+
+    .hero-scroll-label {
+      transition: color 0.15s ease;
+    }
+
+    .read-on::before {
+      transition: none;
+    }
+
+    .hero-scroll-link:hover .hero-scroll-label {
+      text-shadow: none;
+    }
+
+    .hero-scroll-link.read-on:hover::before {
+      transform: rotate(-45deg);
+      filter: none;
+    }
+  }
+
+  /* Below the fold: story entry — two CTAs, equal columns, centered row */
+  #story-entry.entry-bridge {
+    /* 与顶栏同高：锚点定位时区块上沿紧贴 nav 底边，两灰条无夹缝；按钮区靠区内 padding 下移 */
+    scroll-margin-top: 60px;
+  }
+
+  .entry-bridge {
+    border-bottom: 1px solid var(--rule);
+    background: var(--ink);
+    padding: 96px 64px 104px;
+  }
+
+  .entry-bridge-inner {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .cta-primary,
+  .cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 72px;
+    box-sizing: border-box;
+    background: transparent;
+    color: var(--paper);
+    border: 1px solid rgba(251, 243, 232, 0.45);
+    padding: 22px 36px 24px;
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(20px, 2.35vw, 26px);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    text-decoration: none;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .cta-primary .cta-primary-arrow,
+  .cta-secondary .cta-primary-arrow {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(16px, 1.8vw, 19px);
+    font-weight: 400;
+    opacity: 0.65;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .cta-primary:hover,
+  .cta-secondary:hover {
+    background: var(--paper);
+    color: var(--ink);
+    border-color: var(--paper);
+  }
+
+  .cta-primary:hover .cta-primary-arrow,
+  .cta-secondary:hover .cta-primary-arrow {
+    opacity: 1;
+    transform: translateX(3px);
+  }
+
+  .cta-primary:focus-visible,
+  .cta-secondary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 640px) {
+    .entry-bridge {
+      padding: 64px 24px 72px;
+    }
+
+    .entry-bridge-inner {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cta-primary:hover .cta-primary-arrow,
+    .cta-secondary:hover .cta-primary-arrow {
+      transform: none;
+    }
+  }
+
+  .btn-outline {
+    border: 1.5px solid var(--rule);
+    color: var(--ink-light);
+    padding: 12px 24px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+
+  .btn-outline:hover { border-color: var(--ink); color: var(--ink); }
+
+  .hero-right {
+  background: var(--surface);
+  position: relative;
+  overflow: hidden;
+  min-height: 520px;
+}
+
+  /* 与纸色一致的左→右淡出，贴合左侧文字栏 */
+  .hero-right::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      var(--paper) 0%,
+      color-mix(in srgb, var(--paper) 45%, transparent) 28%,
+      color-mix(in srgb, var(--paper) 0%, transparent) 52%
+    );
+  }
+
+  @media (max-width: 900px) {
+    .hero {
+      grid-template-columns: 1fr;
+      min-height: auto;
+    }
+
+    .hero-left {
+      border-bottom: 1px solid var(--rule);
+      min-height: calc(100vh - 60px);
+    }
+
+    .hero-right {
+      min-height: 42vh;
+    }
+  }
+
+/* 图片容器铺满整个右侧 */
+.sf-sketch {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+}
+
+.sf-sketch img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;   
+  display: block;
+}
+.sf-bg {
+  width: 100%;
+  height: 800px;            
+  overflow: hidden;           
+  position: relative;
+  margin-top: -60px;
+}
+
+.sf-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;    
+  display: block;
+  position: relative;
+  z-index: 0;
+}
+
+/* 与 hero-right（img4）对称：img4 为左→右纸色渐隐至透明；此处为上→下，遮罩透明度到底部为 0（不挡图），顶部与 pullout 纸色衔接 */
+.sf-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    var(--paper) 0%,
+    color-mix(in srgb, var(--paper) 52%, transparent) 18%,
+    color-mix(in srgb, var(--paper) 22%, transparent) 42%,
+    color-mix(in srgb, var(--paper) 0%, transparent) 62%
+  );
+}
+
+.hero-stats-bottom {
+  position: absolute;
+  left: 48px;
+  bottom: 48px;
+  right: 48px;
+  z-index: 2;
+}
+
+/* 让右侧那行小标题浮在图上面 */
+.map-inset-label {
+  position: absolute;
+  top: 48px;
+  left: 48px;
+  z-index: 2;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-light);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* 三个卡片浮在右下方 */
+.hero-stats {
+  position: absolute;
+  left: 50%;
+  bottom: 48px;
+  transform: translateX(-50%);
+  z-index: 2;
+
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 16px;
+
+  width: min(920px, calc(100% - 96px));
+}
+
+.h-stat {
+  min-height: 120px;
+  padding: 22px 24px;
+  background: rgba(250, 249, 246, 0.52);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 6px;
+}
+
+.h-stat-n {
+  font-family: 'DM Serif Display', serif;
+  font-size: 40px;
+  line-height: 0.9;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.h-stat-n span {
+  font-size: 26px;
+  line-height: 1;
+  position: relative;
+  top: -0.08em;
+  margin-left: 2px;
+  color: var(--accent);
+}
+
+.h-stat-l {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #303030;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+  .sf-sketch svg {
+    width: 100%; height: 100%;
+  }
+
+  .map-inset-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-light);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  /* Three-column section */
+  .three-col {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--rule);
+  }
+
+  .col-panel {
+    padding: 56px 48px;
+    border-right: 1px solid var(--rule);
+    position: relative;
+  }
+
+  .col-panel:last-child { border-right: none; }
+
+  .col-number {
+    font-family: 'DM Serif Display', serif;
+    font-size: 72px;
+    color: var(--rule);
+    line-height: 1;
+    margin-bottom: 16px;
+    position: absolute;
+    top: 36px; right: 40px;
+  }
+
+  .col-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .col-panel h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+
+  .col-panel p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--ink-light);
+    margin-bottom: 24px;
+  }
+
+  /* Mini bar chart */
+  .mini-chart {
+    margin-top: 20px;
+  }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-light);
+  }
+
+  .bar-fill {
+    height: 8px;
+    background: var(--accent);
+    border-radius: 1px;
+    opacity: 0.7;
+  }
+
+  .bar-fill.teal { background: var(--teal); }
+  .bar-fill.warm { background: var(--accent-warm); }
+
+  /* Quote pullout */
+  .pullout {
+    background: var(--paper);
+    display: flex;
+    align-items: center;
+    gap: 60px;
+    border-top: 1px solid var(--rule);
+    padding: 100px 64px;  
+    flex-direction: column;  
+    text-align: center;  
+  }
+
+  .pullout-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    line-height: 1.4;
+    color: var(--ink);
+    max-width: 500px;
+    max-width: 700px;    
+    margin: 0 auto;     
+    text-align: center;   
+  }
+
+  .pullout-text em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .pullout-meta {
+    flex-shrink: 0;
+    text-align: center;
+  }
+
+  .pullout-meta .big-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 64px;
+    color: var(--ink-light);
+    line-height: 1;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .pullout-meta .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: rgba(245,243,238,0.4);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    line-height: 1.5;
+  }
+
+.pullout-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;            
+  margin-top: 40px;  
+}
+
+.pullout-brand img {
+  height: 80px;         
+  width: auto;
+  display: block;
+  opacity: 0.85;
+}
+
+.pullout-brand span {
+  font-family: 'DM Serif Display', serif;
+  font-size: 50px;      
+  color: var(--ink);
+}
+
+
+  /* Footer */
+.footer {
+  background: var(--ink);
+  color: rgba(255, 255, 255, 0.88);
+  padding: 0 64px 56px;
+  border-top: 3px solid var(--accent);
+}
+
+.footer-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+  gap: 40px 72px;
+  align-items: start;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-top: 52px;
+}
+
+.footer-left {
+  max-width: 560px;
+}
+
+.footer .masthead-logo img {
+  height: 44px;
+  opacity: 0.95;
+}
+
+.footer-lede {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(22px, 2.6vw, 28px);
+  font-weight: 400;
+  line-height: 1.25;
+  color: #fff;
+  margin: 20px 0 14px;
+  letter-spacing: -0.02em;
+}
+
+.footer-desc {
+  font-size: 16px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.62);
+  max-width: 42ch;
+}
+
+/* 右侧：独立信息块，与主叙述区分层次 */
+.footer-aside {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 28px 28px 26px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.footer-aside-label {
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+  margin-bottom: 8px;
+}
+
+.footer-meta {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  margin-bottom: 18px;
+}
+
+.footer-team {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.footer-team li {
+  font-size: 15px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.68);
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.footer-team li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.footer-team li:first-child {
+  padding-top: 0;
+}
+
+@media (max-width: 820px) {
+  .footer {
+    padding: 0 28px 44px;
+  }
+
+  .footer-inner {
+    grid-template-columns: 1fr;
+    gap: 36px;
+    padding-top: 40px;
+  }
+
+  .footer-desc {
+    max-width: none;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-logo">
+  <img src="logo_lower.png" alt="StopAtlas Logo"> 
+</div>
+  <nav class="masthead-nav">
+  <a href="index.html" class="active">Home</a>
+  <a href="map.html">Map</a>
+  <a href="analysis.html">Analysis</a>
+  <a href="resources.html">Resources</a>
+  </nav>
+</div>
+
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-intro">
+      <div class="eyebrow">San Francisco · Traffic Stop Analysis · 2006-2016</div>
+      <h1>Where do<br>Traffic Stops happen,<br>and what <em>happens next?</em></h1>
+      <p class="hero-body">This project examines how traffic stops vary across locations in San Francisco, asking not only where and why stops occur, but also how enforcement outcomes differ. By connecting location, reason for stop, and post-stop actions, we aim to uncover patterns that suggest differences in policing intensity and decision-making across contexts.</p>
+    </div>
+    <div class="hero-scroll-hint">
+      <a href="#story-entry" class="hero-scroll-link read-on">
+        <span class="hero-scroll-label">Read on</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="sf-sketch">
+      <img src="frontpage-img4.png" alt="Stop density map">
+    </div>
+  </div>
+</section>
+
+<section id="story-entry" class="entry-bridge" aria-label="Continue exploring this story">
+  <div class="entry-bridge-inner">
+    <a href="map.html" class="cta-primary">Explore the Map<span class="cta-primary-arrow" aria-hidden="true">→</span></a>
+    <a href="analysis.html" class="cta-secondary">Explore the Analysis<span class="cta-primary-arrow" aria-hidden="true">→</span></a>
+  </div>
+</section>
+
+<!-- Pull quote -->
+<div class="pullout">
+  <div class="pullout-text">
+    Few tools connect <em>spatial patterns, stop reasons, and enforcement outcomes</em> in a single, integrated view.
+  </div>
+  <div class="pullout-brand">
+  <img src="dark_logo_lower.png" alt="StopAtlas logo">
+  <span>does.</span>
+</div>
+  <div class="pullout-meta">
+    <span class="big-num"></span>
+    <div class="label">SFPD<br>Stop Data<br>Dataset</div>
+  </div>
+</div>
+
+
+<div class="sf-bg">
+      <img src="frontpage-img3.png" alt="">
+      <div class="hero-stats hero-stats-bottom">
+      <div class="h-stat">
+        <div class="h-stat-n">24<span>k</span></div>
+        <div class="h-stat-l">Stops<br>analyzed</div>
+      </div>
+      <div class="h-stat">
+        <div class="h-stat-n">3</div>
+        <div class="h-stat-l">Outcome<br>types</div>
+      </div>
+      <div class="h-stat">
+        <div class="h-stat-n">10<span>+</span></div>
+        <div class="h-stat-l">Stop reason<br>categories</div>
+      </div>
+      </div>
+</div>
+
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="masthead-logo">
+        <img src="logo_lower.png" alt="StopAtlas Logo">
+      </div>
+      <p class="footer-lede">Exploring patterns in traffic stops across the United States</p>
+      <p class="footer-desc">Starting with San Francisco.</p>
+    </div>
+
+    <aside class="footer-aside" aria-label="Project credits">
+      <span class="footer-aside-label">Credits</span>
+      <p class="footer-meta">Group 3</p>
+      <ul class="footer-team">
+        <li>Xiuyuan</li>
+        <li>Jackson</li>
+        <li>Flowen</li>
+        <li>Domi</li>
+      </ul>
+    </aside>
+  </div>
+</footer>
+
+</body>
+</html>

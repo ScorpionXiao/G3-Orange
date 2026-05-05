@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StopAtlas — Map</title>
+
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+<style>
+  :root {
+    --bg: #f5f3ee;
+    --paper: #faf9f6;
+    --ink: #424242;
+    --ink-light: #6b6860;
+    --rule: #d6d3cc;
+    --accent: #ba554a;
+    --accent-warm: #e67e22;
+    --teal: #1a7a6e;
+    --surface: #edeae3;
+    --panel-w: 380px;
+  }
+  
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  /* ── Masthead (match index.html) ── */
+  .masthead {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: var(--ink);
+    padding: 0 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    z-index: 2000;
+  }
+
+  .masthead-logo {
+    display: flex;
+    vertical-align: middle;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .masthead-logo img {
+    height: 35px;
+  }
+
+  .masthead-tagline {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: rgba(245, 243, 238, 0.4);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .masthead-nav {
+    display: flex;
+    gap: 28px;
+  }
+
+  .masthead-nav a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: 60px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(245, 243, 238, 0.55);
+    text-decoration: none;
+    letter-spacing: 0.5px;
+    transition: color 0.15s;
+    vertical-align: middle;
+  }
+
+  .masthead-nav a:hover {
+    color: var(--bg);
+  }
+
+  .masthead-nav a.active {
+    color: var(--bg);
+  }
+
+  .masthead-nav a.active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 16px;
+    height: 2px;
+    background: #cf864b;
+  }
+
+  /* ── Layout shell ── */
+  .shell {
+    position: fixed;
+    top: 60px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+  }
+
+  /* ── Left panel ── */
+  .panel {
+    width: var(--panel-w);
+    flex-shrink: 0;
+    background: var(--paper);
+    border-right: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1000;
+  }
+
+  .panel-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--rule-light);
+    flex-shrink: 0;
+  }
+
+  .panel-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 12px;
+  }
+
+  /* Search */
+  .search-wrap {
+    position: relative;
+  }
+
+  .search-wrap svg {
+    position: absolute;
+    left: 10px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-faint);
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 9px 10px 9px 34px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .search-input::placeholder { color: var(--ink-faint); }
+
+  .search-input:focus {
+    border-color: var(--accent-warm);
+    box-shadow: 0 0 0 3px rgba(199,124,63,0.12);
+  }
+
+  .search-results {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    z-index: 100;
+    overflow: hidden;
+    display: none;
+  }
+
+  .search-results.open { display: block; }
+
+  .search-result-item {
+    padding: 9px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--rule-light);
+    transition: background 0.1s;
+    color: var(--ink);
+  }
+
+  .search-result-item:last-child { border-bottom: none; }
+  .search-result-item:hover { background: var(--surface); }
+
+  .search-result-item small {
+    display: block;
+    font-size: 10px;
+    color: var(--ink-faint);
+    margin-top: 1px;
+  }
+
+  /* Panel body */
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule) transparent;
+  }
+
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+
+  /* Filter sections */
+  .filter-section {
+    margin-bottom: 22px;
+  }
+
+  .filter-label {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .filter-label .clear-btn {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+  }
+
+  .filter-label .clear-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Chip filters */
+  .chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .chip {
+    padding: 5px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--ink-light);
+    transition: all 0.12s;
+    user-select: none;
+    line-height: 1;
+  }
+
+  .chip:hover {
+    border-color: var(--accent-warm);
+    color: var(--ink);
+  }
+
+  .chip.active {
+    background: var(--accent-warm);
+    border-color: var(--accent-warm);
+    color: white;
+  }
+
+  .filter-hint {
+    font-size: 11px;
+    color: var(--ink-faint);
+    line-height: 1.35;
+    margin: -2px 0 10px;
+  }
+
+  .chip-group-years .chip {
+    font-size: 10px;
+    padding: 4px 7px;
+  }
+
+  .map-data-banner {
+    font-size: 11px;
+    line-height: 1.45;
+    padding: 10px 12px;
+    margin: -4px 0 14px;
+    border-radius: 6px;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .map-data-banner.hidden { display: none; }
+
+  .map-data-banner.banner-error {
+    border-color: var(--accent);
+    background: rgba(186, 85, 74, 0.08);
+  }
+
+  .map-data-banner.banner-warn {
+    border-color: var(--accent-warm);
+    background: rgba(199, 124, 63, 0.1);
+  }
+
+  .map-data-banner.banner-info {
+    border-color: var(--teal);
+    background: rgba(26, 122, 110, 0.08);
+  }
+
+  .map-data-banner code { font-size: 10px; word-break: break-all; }
+
+  /* Time slider */
+  .time-range-wrap {
+    padding: 4px 0;
+  }
+
+  .time-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+
+  .time-selected {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--accent-warm);
+    font-weight: 500;
+    margin-bottom: 6px;
+    min-height: 16px;
+  }
+
+  .dual-slider {
+    position: relative;
+    height: 20px;
+  }
+
+  .dual-slider input[type=range] {
+    position: absolute;
+    width: 100%;
+    height: 4px;
+    background: transparent;
+    pointer-events: none;
+    -webkit-appearance: none;
+    outline: none;
+    top: 8px;
+  }
+
+  .dual-slider input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    background: var(--paper);
+    border: 2px solid var(--accent-warm);
+    border-radius: 50%;
+    pointer-events: all;
+    cursor: pointer;
+  }
+
+  .dual-slider input[type=range]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: var(--paper);
+    border: 2px solid var(--accent-warm);
+    border-radius: 50%;
+    pointer-events: all;
+    cursor: pointer;
+  }
+
+  .slider-track {
+    position: absolute;
+    height: 4px;
+    background: var(--rule);
+    border-radius: 2px;
+    top: 8px;
+    left: 0; right: 0;
+  }
+
+  .slider-fill {
+    position: absolute;
+    height: 4px;
+    background: var(--accent-warm);
+    border-radius: 2px;
+    top: 8px;
+  }
+
+  /* View toggle */
+  .view-toggle {
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .view-btn {
+    flex: 1;
+    padding: 8px 0;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-light);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    letter-spacing: 0.02em;
+  }
+
+  .view-btn.active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* Stats bar */
+  .panel-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--rule-light);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .stats-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .stat {
+    flex: 1;
+  }
+
+  .stat-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 3px;
+  }
+
+  .hint-text {
+    font-size: 10px;
+    color: var(--ink-faint);
+    font-style: italic;
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+
+  /* ── Map ── */
+  #map {
+    flex: 1;
+    position: relative;
+  }
+
+  .leaflet-tile {
+    filter: grayscale(85%) brightness(1.05) contrast(0.9) sepia(12%);
+  }
+
+  /* Custom tooltip */
+  .stop-tooltip {
+    background: var(--paper) !important;
+    border: 1px solid var(--rule) !important;
+    border-radius: 6px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+    padding: 10px 14px !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 12px !important;
+    color: var(--ink) !important;
+    white-space: nowrap;
+    max-width: 260px;
+    white-space: normal;
+  }
+
+  .stop-tooltip::before { display: none !important; }
+
+  .tooltip-loc {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .tooltip-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 3px;
+    font-size: 11px;
+    color: var(--ink-light);
+  }
+
+  .tooltip-key {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    min-width: 60px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+  }
+
+  .badge-reason {
+    background: rgba(199,124,63,0.12);
+    color: var(--accent-warm);
+  }
+
+  .badge-outcome-warning { background: rgba(230,126,34,0.12); color: #c87212; }
+  .badge-outcome-citation { background: rgba(186,85,74,0.12); color: var(--accent); }
+  .badge-outcome-arrest { background: rgba(46,44,42,0.12); color: var(--ink); }
+  .badge-outcome-release { background: rgba(26,122,110,0.12); color: var(--teal); }
+
+  /* Fade-in animation for markers */
+  @keyframes markerFadeIn {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .leaflet-interactive {
+    transition: opacity 0.3s;
+  }
+
+  /* Highlighted markers */
+  .leaflet-pane .highlight-pulse {
+    animation: pulse 1.5s ease-out infinite;
+  }
+
+  @keyframes pulse {
+    0% { r: attr(r); opacity: 0.9; }
+    100% { r: calc(attr(r) * 1.8); opacity: 0; }
+  }
+
+  /* Reset filter link */
+  .reset-all {
+    display: block;
+    text-align: center;
+    font-size: 10px;
+    color: var(--accent);
+    cursor: pointer;
+    margin-top: 6px;
+    letter-spacing: 0.04em;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* Exploration hint banner */
+  .explore-hint {
+    position: absolute;
+    bottom: 20px;
+    right: 16px;
+    background: rgba(250,249,246,0.92);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--ink-light);
+    max-width: 220px;
+    line-height: 1.5;
+    z-index: 800;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    transition: opacity 0.5s;
+  }
+
+  .explore-hint strong {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent-warm);
+    margin-bottom: 4px;
+  }
+
+  .explore-hint.hidden { opacity: 0; pointer-events: none; }
+
+  .leaflet-control-zoom {
+    border: 1px solid var(--rule) !important;
+    border-radius: 6px !important;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+  }
+
+  .leaflet-control-zoom a {
+    background: var(--paper) !important;
+    color: var(--ink-light) !important;
+    border-bottom: 1px solid var(--rule) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 16px !important;
+    line-height: 26px !important;
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .leaflet-control-zoom a:hover {
+    background: var(--surface) !important;
+    color: var(--ink) !important;
+  }
+
+  /* Loading overlay */
+  .map-loading {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 900;
+    transition: opacity 0.6s;
+  }
+
+  .map-loading.done { opacity: 0; pointer-events: none; }
+
+  .loading-inner {
+    text-align: center;
+  }
+
+  .loading-dots {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+
+  .loading-dots span {
+    width: 7px; height: 7px;
+    background: var(--accent-warm);
+    border-radius: 50%;
+    animation: dotBounce 1.2s ease-in-out infinite;
+  }
+
+  .loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes dotBounce {
+    0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  .loading-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.06em;
+  }
+
+  /* Divider */
+  .filter-divider {
+    height: 1px;
+    background: var(--rule-light);
+    margin: 6px 0 18px;
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-logo">
+    <img src="logo_lower.png" alt="StopAtlas Logo">
+  </div>
+  <nav class="masthead-nav">
+    <a href="index.html">Home</a>
+    <a href="map.html" class="active">Map</a>
+    <a href="analysis.html">Analysis</a>
+    <a href="resources.html">Resources</a>
+  </nav>
+</div>
+
+<!-- Main shell -->
+<div class="shell">
+
+  <!-- Left control panel -->
+  <aside class="panel">
+
+    <div class="panel-header">
+      <p class="panel-title">Explore Stops</p>
+
+      <!-- Search -->
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input class="search-input" id="searchInput" type="text" placeholder="Search neighborhood…" autocomplete="off" />
+        <div class="search-results" id="searchResults"></div>
+      </div>
+    </div>
+
+    <div class="panel-body">
+
+      <div id="mapDataBanner" class="map-data-banner hidden" aria-live="polite"></div>
+
+      <!-- View toggle -->
+      <div class="filter-section">
+        <p class="filter-label">Visualization</p>
+        <div class="view-toggle">
+          <button class="view-btn active" id="viewPoints" onclick="setView('points')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="3"/><circle cx="19" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><circle cx="12" cy="12" r="3"/></svg>
+            Points
+          </button>
+          <button class="view-btn" id="viewHeat" onclick="setView('heatmap')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/><circle cx="12" cy="12" r="2"/></svg>
+            Heatmap
+          </button>
+        </div>
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <!-- Stop Reason filter -->
+      <div class="filter-section">
+        <p class="filter-label">
+          Stop Reason
+          <span class="clear-btn" id="clearReason" onclick="clearFilter('reason')">Clear</span>
+        </p>
+        <div class="chip-group" id="reasonChips"></div>
+      </div>
+
+      <!-- Outcome filter -->
+      <div class="filter-section">
+        <p class="filter-label">
+          Outcome
+          <span class="clear-btn" id="clearOutcome" onclick="clearFilter('outcome')">Clear</span>
+        </p>
+        <div class="chip-group" id="outcomeChips"></div>
+      </div>
+
+      <!-- Year: reloads stratified sample from API (same sampling as full dataset) -->
+      <div class="filter-section">
+        <p class="filter-label">Year</p>
+        <p class="filter-hint" id="yearFilterHint">Tap a year to reload points from the database (stratified by reason).</p>
+        <div class="chip-group chip-group-years" id="yearChips"></div>
+      </div>
+
+      <!-- Time of day filter -->
+      <div class="filter-section">
+        <p class="filter-label">Time of Day</p>
+        <div class="time-range-wrap">
+          <div class="time-selected" id="timeDisplay">All hours</div>
+          <div class="dual-slider" id="dualSlider">
+            <div class="slider-track"></div>
+            <div class="slider-fill" id="sliderFill"></div>
+            <input type="range" id="timeMin" min="0" max="23" value="0" step="1">
+            <input type="range" id="timeMax" min="0" max="23" value="23" step="1">
+          </div>
+          <div class="time-labels">
+            <span>12 am</span><span>6 am</span><span>12 pm</span><span>6 pm</span><span>11 pm</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reset all -->
+      <span class="reset-all" onclick="resetAll()">↺ Reset all filters</span>
+
+      <div class="hint-text" id="hintText">
+        Try switching to <strong>Heatmap</strong> to reveal density clusters — then filter by <em>Reason</em> to compare patterns.
+      </div>
+
+    </div>
+
+    <!-- Footer stats -->
+    <div class="panel-footer">
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-value" id="statShowing">—</div>
+          <div class="stat-label">Shown</div>
+        </div>
+        <div class="stat" id="statTotalWrap" title="">
+          <div class="stat-value" id="statTotal">—</div>
+          <div class="stat-label">Sample / SF · GPS rows</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="statDistricts">—</div>
+          <div class="stat-label">Districts</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Map -->
+  <div id="map">
+    <div class="map-loading" id="mapLoading">
+      <div class="loading-inner">
+        <div class="loading-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="loading-text">Mapping stops…</div>
+      </div>
+    </div>
+
+    <div class="explore-hint" id="exploreHint">
+      <strong>Explore tip</strong>
+      Hover any point to see stop details. Use filters on the left to uncover spatial patterns.
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   Map data: sampled rows from data_api.php?task=map
+   (default stride 5 ≈ 1/5 sample per reason; override with ?stride=)
+═══════════════════════════════════════════ */
+
+const SF_NEIGHBORHOODS = [
+  { name: 'Mission District', lat: 37.7599, lng: -122.4148, zoom: 14 },
+  { name: 'SoMa', lat: 37.7785, lng: -122.3948, zoom: 14 },
+  { name: 'Tenderloin', lat: 37.7832, lng: -122.4133, zoom: 15 },
+  { name: 'Bayview', lat: 37.7313, lng: -122.3865, zoom: 14 },
+  { name: 'Sunset District', lat: 37.7575, lng: -122.4882, zoom: 14 },
+  { name: 'Richmond District', lat: 37.7785, lng: -122.4830, zoom: 14 },
+  { name: 'Chinatown', lat: 37.7941, lng: -122.4078, zoom: 15 },
+  { name: 'North Beach', lat: 37.8060, lng: -122.4104, zoom: 14 },
+  { name: 'Haight-Ashbury', lat: 37.7692, lng: -122.4481, zoom: 14 },
+  { name: 'Castro', lat: 37.7609, lng: -122.4350, zoom: 14 },
+  { name: 'Nob Hill', lat: 37.7930, lng: -122.4159, zoom: 14 },
+  { name: 'Financial District', lat: 37.7946, lng: -122.3999, zoom: 14 },
+  { name: 'Excelsior', lat: 37.7238, lng: -122.4244, zoom: 14 },
+  { name: 'Visitacion Valley', lat: 37.7133, lng: -122.4082, zoom: 14 },
+  { name: 'Portola', lat: 37.7343, lng: -122.4207, zoom: 14 },
+  { name: 'Bernal Heights', lat: 37.7426, lng: -122.4156, zoom: 14 },
+  { name: 'Noe Valley', lat: 37.7502, lng: -122.4337, zoom: 14 },
+  { name: 'Outer Mission', lat: 37.7213, lng: -122.4337, zoom: 14 },
+  { name: 'Glen Park', lat: 37.7347, lng: -122.4337, zoom: 15 },
+  { name: 'Twin Peaks', lat: 37.7525, lng: -122.4477, zoom: 14 },
+];
+
+// Must match DB / spreadsheet filter options only (no extra UI categories).
+const REASON_FOR_STOP_OPTIONS = [
+  'Assistance to Motorist',
+  'Mechanical or Non-Moving Violation',
+  'Moving Violation',
+  'MPC Violation',
+  'NA',
+];
+
+const REASON_COLORS = {
+  'Assistance to Motorist': '#1a7a6e',
+  'Mechanical or Non-Moving Violation': '#dfa16e',
+  'Moving Violation': '#cc6858',
+  'MPC Violation': '#6b6860',
+  'NA': '#9b9890',
+};
+
+const OUTCOME_BADGE = {
+  'Warning': 'badge-outcome-warning',
+  'Citation': 'badge-outcome-citation',
+  'Arrest': 'badge-outcome-arrest',
+  'Release': 'badge-outcome-release',
+};
+
+const YEAR_RANGE_MIN = 2007;
+const YEAR_RANGE_MAX = 2016;
+
+const allStops = [];
+let mapMeta = null;
+
+function formatOutcome(o) {
+  if (o == null || String(o).trim() === '') return 'Unknown';
+  const s = String(o).trim().toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatTimeFromSeconds(sec) {
+  if (sec == null || sec === '') return '—';
+  const n = Number(sec);
+  if (!Number.isFinite(n)) return '—';
+  const h = Math.floor(n / 3600) % 24;
+  const m = Math.floor((n % 3600) / 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function normalizeHour(row) {
+  if (row.hour == null || row.hour === '') return 0;
+  const h = parseInt(row.hour, 10);
+  if (!Number.isFinite(h)) return 0;
+  return Math.min(23, Math.max(0, h));
+}
+
+/** DB date often M/D/YYYY (CSV); also allow YYYY-MM-DD. */
+function parseYearFromStopDate(d) {
+  if (d == null || d === '') return null;
+  const s = String(d).trim();
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) return parseInt(mdy[3], 10);
+  const iso = s.match(/^(\d{4})-\d{2}-\d{2}/);
+  if (iso) return parseInt(iso[1], 10);
+  const yonly = s.match(/^(\d{4})$/);
+  if (yonly) return parseInt(yonly[1], 10);
+  return null;
+}
+
+function colorForReason(canonicalReason) {
+  return REASON_COLORS[canonicalReason] || '#6b6860';
+}
+
+/** Map raw DB strings onto REASON_FOR_STOP_OPTIONS (everything else → NA). */
+function canonicalReason(raw) {
+  const r = raw == null ? '' : String(raw).trim();
+  if (r === '' || /^na$/i.test(r)) return 'NA';
+  if (r === 'Moving Violation') return 'Moving Violation';
+  if (r === 'MPC Violation') return 'MPC Violation';
+  if (r === 'Assistance to Motorist') return 'Assistance to Motorist';
+  if (r === 'Mechanical or Non-Moving Violation' || r.startsWith('Mechanical or Non-Moving Violation')) {
+    return 'Mechanical or Non-Moving Violation';
+  }
+  return 'NA';
+}
+
+function normalizeStop(row) {
+  const rawReason = row.reason != null ? String(row.reason) : '';
+  const reason = canonicalReason(rawReason);
+  const dateRaw = row.date != null ? String(row.date) : '';
+  return {
+    id: row.raw_row_number,
+    lat: parseFloat(row.lat),
+    lng: parseFloat(row.lng),
+    location: row.location || '—',
+    district: row.district || '',
+    reason,
+    reason_raw: rawReason.trim() === '' ? '—' : rawReason.trim(),
+    outcome: formatOutcome(row.outcome),
+    hour: normalizeHour(row),
+    time: formatTimeFromSeconds(row.time),
+    date_raw: dateRaw,
+    year: parseYearFromStopDate(row.date),
+    share_of_total: row.share_of_total != null ? row.share_of_total : null,
+    stop_count: row.stop_count != null ? row.stop_count : null,
+    count: 1,
+  };
+}
+
+function setMapBanner(html, kind = 'info') {
+  const el = document.getElementById('mapDataBanner');
+  if (!el) return;
+  if (!html) {
+    el.classList.add('hidden');
+    el.innerHTML = '';
+    return;
+  }
+  el.classList.remove('hidden', 'banner-error', 'banner-warn', 'banner-info');
+  el.classList.add(kind === 'error' ? 'banner-error' : kind === 'warn' ? 'banner-warn' : 'banner-info');
+  el.innerHTML = html;
+}
+
+async function loadMapData() {
+  const qs = new URLSearchParams({ task: 'map' });
+  const stride = new URLSearchParams(window.location.search).get('stride');
+  if (stride != null && stride !== '') qs.set('stride', stride);
+  if (state.mapYear != null && Number.isFinite(state.mapYear)) {
+    qs.set('year', String(state.mapYear));
+  }
+  const apiUrl = new URL('data_api.php', window.location.href);
+  apiUrl.search = qs.toString();
+  const res = await fetch(apiUrl.toString());
+  const text = await res.text();
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    const preview = text.slice(0, 280).replace(/</g, '\u003c');
+    throw new Error(
+      `Server returned non-JSON (HTTP ${res.status}). Open DevTools → Network → data_api.php. Preview: ${preview}`
+    );
+  }
+  if (!res.ok) {
+    throw new Error(json.error ? String(json.error) : `HTTP ${res.status}`);
+  }
+  if (json.error) throw new Error(typeof json.error === 'string' ? json.error : JSON.stringify(json.error));
+  mapMeta = json.meta || null;
+  allStops.length = 0;
+  (json.data || []).forEach(r => {
+    const s = normalizeStop(r);
+    if (Number.isFinite(s.lat) && Number.isFinite(s.lng)) allStops.push(s);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   State
+═══════════════════════════════════════════ */
+const state = {
+  view: 'points',
+  reasons: new Set(),
+  outcomes: new Set(),
+  /** null = all years (no API filter); number = data_api ?year= */
+  mapYear: null,
+  timeMin: 0,
+  timeMax: 23,
+  search: '',
+};
+
+initYearFromUrl();
+buildYearChips();
+
+let filteredStops = [];
+let markers = [];
+let heatLayer = null;
+
+/* ═══════════════════════════════════════════
+   Map init
+═══════════════════════════════════════════ */
+const map = L.map('map', {
+  zoomControl: true,
+  attributionControl: true,
+  preferCanvas: true,
+}).setView([37.762, -122.435], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors',
+  maxZoom: 19,
+}).addTo(map);
+
+/* ═══════════════════════════════════════════
+   Filter logic
+═══════════════════════════════════════════ */
+function applyFilters(options = {}) {
+  const animatePoints = options.animatePoints === true;
+  filteredStops = allStops.filter(s => {
+    if (state.reasons.size > 0 && !state.reasons.has(s.reason)) return false;
+    if (state.outcomes.size > 0 && !state.outcomes.has(s.outcome)) return false;
+    if (s.hour < state.timeMin || s.hour > state.timeMax) return false;
+    return true;
+  });
+  updateStats();
+  if (state.view === 'points') renderPoints(animatePoints);
+  else renderHeatmap();
+  updateHints();
+}
+
+/* ═══════════════════════════════════════════
+   Render: Points
+═══════════════════════════════════════════ */
+function renderPoints(animate = false) {
+  // clear heatmap
+  if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+
+  // remove old markers
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+
+  const maxCount = Math.max(...filteredStops.map(s => s.count), 1);
+
+  filteredStops.forEach((s, i) => {
+    const color = colorForReason(s.reason);
+    const r = 4 + Math.sqrt(s.count / maxCount) * 8;
+
+    const m = L.circleMarker([s.lat, s.lng], {
+      radius: r,
+      fillColor: color,
+      fillOpacity: animate ? 0 : 0.55,
+      color: color,
+      weight: 1,
+      opacity: animate ? 0 : 0.7,
+    })
+    .bindTooltip(buildTooltip(s), {
+      className: 'stop-tooltip',
+      direction: 'top',
+      offset: [0, -4],
+      opacity: 1,
+    })
+    .addTo(map);
+
+    if (animate) {
+      const delay = Math.random() * 800;
+      setTimeout(() => {
+        m.setStyle({ fillOpacity: 0.55, opacity: 0.7 });
+      }, delay);
+    }
+
+    m.on('mouseover', function() {
+      this.setStyle({ fillOpacity: 0.85, weight: 2, opacity: 1 });
+      this.openTooltip();
+    });
+    m.on('mouseout', function() {
+      this.setStyle({ fillOpacity: 0.55, weight: 1, opacity: 0.7 });
+    });
+
+    markers.push(m);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   Render: Heatmap
+═══════════════════════════════════════════ */
+function renderHeatmap() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+
+  if (heatLayer) map.removeLayer(heatLayer);
+
+  const wgt = s => {
+    const sh = s.share_of_total;
+    if (sh != null && Number.isFinite(Number(sh))) return Math.min(1, 0.1 + Number(sh) / 90);
+    return 0.26;
+  };
+  const points = filteredStops.map(s => [s.lat, s.lng, wgt(s)]);
+  const wVals = points.map(p => p[2]);
+  const wMax = wVals.length ? Math.max(...wVals, 1e-6) : 1;
+  // leaflet-heat: gradient keys MUST stay in [0, 1]. Higher `max` = softer map (less clipping to darkest stop).
+  const heatMax = Math.max(0.5, wMax * 1.45);
+
+  if (typeof L.heatLayer === 'function') {
+    heatLayer = L.heatLayer(points, {
+      radius: 25,
+      blur: 18,
+      maxZoom: 17,
+      max: heatMax,
+      gradient: {
+        0.0:  '#fff9f4',
+        0.18: '#fde8dc',
+        0.35: '#f7cfa8',
+        0.52: '#f0b078',
+        0.68: '#e8924a',
+        0.82: '#d97a35',
+        0.92: '#c45f24',
+        1.0:  '#ad503b',
+      },
+    }).addTo(map);
+  } else {
+    // fallback if heat plugin unavailable
+    renderPoints(false);
+    document.getElementById('viewPoints').classList.add('active');
+    document.getElementById('viewHeat').classList.remove('active');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Tooltip builder
+═══════════════════════════════════════════ */
+function buildTooltip(s) {
+  const outcomeClass = OUTCOME_BADGE[s.outcome] || '';
+  const share =
+    s.share_of_total != null && s.share_of_total !== ''
+      ? `${escapeHtml(String(s.share_of_total))}% of city stops (district)`
+      : '';
+  const raw = s.reason_raw && s.reason_raw !== '—' ? s.reason_raw : '';
+  const showRawLine = Boolean(raw && raw !== s.reason);
+  return `
+    <div class="tooltip-loc">${escapeHtml(s.location)}</div>
+    <div class="tooltip-row">
+      <span class="tooltip-key">Reason</span>
+      <span class="badge badge-reason">${escapeHtml(s.reason)}</span>
+    </div>
+    ${showRawLine ? `<div class="tooltip-row"><span class="tooltip-key">As recorded</span><span style="font-size:11px">${escapeHtml(raw)}</span></div>` : ''}
+    <div class="tooltip-row">
+      <span class="tooltip-key">Date</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px">${escapeHtml(s.date_raw || '—')}</span>
+    </div>
+    <div class="tooltip-row">
+      <span class="tooltip-key">Outcome</span>
+      <span class="badge ${outcomeClass}">${escapeHtml(s.outcome)}</span>
+    </div>
+    <div class="tooltip-row">
+      <span class="tooltip-key">Time</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px">${escapeHtml(s.time)}</span>
+    </div>
+    <div class="tooltip-row">
+      <span class="tooltip-key">District</span>
+      <span>${escapeHtml(s.district)}</span>
+    </div>
+    ${share ? `<div class="tooltip-row"><span class="tooltip-key">Share</span><span>${share}</span></div>` : ''}`;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ═══════════════════════════════════════════
+   Stats
+═══════════════════════════════════════════ */
+function updateStats() {
+  document.getElementById('statShowing').textContent = filteredStops.length.toLocaleString();
+  const el = document.getElementById('statTotal');
+  const wrap = document.getElementById('statTotalWrap');
+  const yTag = mapMeta && mapMeta.year_filter != null ? ` · ${mapMeta.year_filter}` : '';
+  if (wrap) {
+    wrap.title = (mapMeta && mapMeta.eligible_denominator_note)
+      ? String(mapMeta.eligible_denominator_note)
+      : 'Right-hand number is how many rows match SF map filters before sampling; left is points on map (~1/stride per reason).';
+  }
+  if (mapMeta && mapMeta.total_eligible) {
+    el.textContent = `${allStops.length.toLocaleString()} / ${Number(mapMeta.total_eligible).toLocaleString()}${yTag}`;
+  } else {
+    el.textContent = allStops.length.toLocaleString() + yTag;
+  }
+  const districts = new Set(filteredStops.map(s => s.district)).size;
+  document.getElementById('statDistricts').textContent = districts;
+}
+
+/* ═══════════════════════════════════════════
+   View toggle
+═══════════════════════════════════════════ */
+function setView(v) {
+  state.view = v;
+  document.getElementById('viewPoints').classList.toggle('active', v === 'points');
+  document.getElementById('viewHeat').classList.toggle('active', v === 'heatmap');
+  applyFilters();
+}
+
+/* ═══════════════════════════════════════════
+   Chip filters
+═══════════════════════════════════════════ */
+function buildFilterChips(stops) {
+  const reasonEl = document.getElementById('reasonChips');
+  const outcomeEl = document.getElementById('outcomeChips');
+  reasonEl.innerHTML = '';
+  outcomeEl.innerHTML = '';
+
+  REASON_FOR_STOP_OPTIONS.forEach(r => {
+    const c = document.createElement('div');
+    c.className = 'chip';
+    c.textContent = r;
+    c.onclick = () => toggleChip('reason', r, c);
+    c.title = r;
+    reasonEl.appendChild(c);
+  });
+
+  const outcomes = [...new Set(stops.map(s => s.outcome).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
+  outcomes.forEach(o => {
+    const c = document.createElement('div');
+    c.className = 'chip';
+    c.textContent = o;
+    c.onclick = () => toggleChip('outcome', o, c);
+    outcomeEl.appendChild(c);
+  });
+}
+
+function toggleChip(type, value, el) {
+  const set = type === 'reason' ? state.reasons : state.outcomes;
+  const clearId = type === 'reason' ? 'clearReason' : 'clearOutcome';
+
+  if (set.has(value)) {
+    set.delete(value);
+    el.classList.remove('active');
+  } else {
+    set.add(value);
+    el.classList.add('active');
+  }
+
+  // show/hide clear button
+  const btn = document.getElementById(clearId);
+  btn.classList.toggle('visible', set.size > 0);
+
+  applyFilters();
+}
+
+function clearFilter(type) {
+  if (type === 'reason') {
+    state.reasons.clear();
+    document.querySelectorAll('#reasonChips .chip').forEach(c => c.classList.remove('active'));
+    document.getElementById('clearReason').classList.remove('visible');
+  } else {
+    state.outcomes.clear();
+    document.querySelectorAll('#outcomeChips .chip').forEach(c => c.classList.remove('active'));
+    document.getElementById('clearOutcome').classList.remove('visible');
+  }
+  applyFilters();
+}
+
+async function resetAll() {
+  state.reasons.clear();
+  state.outcomes.clear();
+  state.mapYear = null;
+  state.timeMin = 0;
+  state.timeMax = 23;
+  document.querySelectorAll('#reasonChips .chip, #outcomeChips .chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('clearReason').classList.remove('visible');
+  document.getElementById('clearOutcome').classList.remove('visible');
+  syncYearChipStyles();
+  document.getElementById('timeMin').value = 0;
+  document.getElementById('timeMax').value = 23;
+  updateTimeDisplay();
+  const loading = document.getElementById('mapLoading');
+  loading.classList.remove('done');
+  try {
+    await loadMapData();
+    buildFilterChips(allStops);
+    applyFilters();
+  } finally {
+    loading.classList.add('done');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Year chips → API reload (stratified sample for that year)
+═══════════════════════════════════════════ */
+function initYearFromUrl() {
+  const yq = new URLSearchParams(window.location.search).get('year');
+  if (yq && yq.toLowerCase() !== 'all') {
+    const y = parseInt(yq, 10);
+    if (y >= YEAR_RANGE_MIN && y <= YEAR_RANGE_MAX) state.mapYear = y;
+  }
+}
+
+function buildYearChips() {
+  const el = document.getElementById('yearChips');
+  if (!el) return;
+  el.innerHTML = '';
+  const add = (label, value) => {
+    const c = document.createElement('div');
+    c.className = 'chip chip-year';
+    c.textContent = label;
+    c.dataset.year = value === null ? 'all' : String(value);
+    c.onclick = () => selectMapYear(value);
+    el.appendChild(c);
+  };
+  add('All', null);
+  for (let y = YEAR_RANGE_MIN; y <= YEAR_RANGE_MAX; y++) add(String(y), y);
+  syncYearChipStyles();
+}
+
+function syncYearChipStyles() {
+  document.querySelectorAll('#yearChips .chip').forEach(c => {
+    const v = c.dataset.year;
+    const active = state.mapYear === null ? v === 'all' : String(state.mapYear) === v;
+    c.classList.toggle('active', active);
+  });
+}
+
+async function selectMapYear(year) {
+  const next = year === null ? null : year;
+  if (state.mapYear === next) return;
+  state.mapYear = next;
+  syncYearChipStyles();
+  try {
+    const u = new URL(window.location.href);
+    if (next == null) u.searchParams.delete('year');
+    else u.searchParams.set('year', String(next));
+    history.replaceState({}, '', u);
+  } catch (_) { /* ignore */ }
+
+  const loading = document.getElementById('mapLoading');
+  loading.classList.remove('done');
+  try {
+    await loadMapData();
+    buildFilterChips(allStops);
+    applyFilters({ animatePoints: true });
+  } catch (e) {
+    console.error(e);
+    setMapBanner(`<strong>Reload failed.</strong> ${escapeHtml(String(e.message))}`, 'error');
+  } finally {
+    loading.classList.add('done');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Time slider
+═══════════════════════════════════════════ */
+function updateTimeDisplay() {
+  const mn = parseInt(document.getElementById('timeMin').value);
+  const mx = parseInt(document.getElementById('timeMax').value);
+  const fmt = h => {
+    if (h === 0) return '12 am';
+    if (h === 12) return '12 pm';
+    if (h < 12) return `${h} am`;
+    return `${h - 12} pm`;
+  };
+  document.getElementById('timeDisplay').textContent =
+    (mn === 0 && mx === 23) ? 'All hours' : `${fmt(mn)} – ${fmt(mx)}`;
+
+  // fill track
+  const fill = document.getElementById('sliderFill');
+  const pct = v => (v / 23) * 100;
+  fill.style.left = pct(mn) + '%';
+  fill.style.width = (pct(mx) - pct(mn)) + '%';
+}
+
+document.getElementById('timeMin').addEventListener('input', e => {
+  if (parseInt(e.target.value) > state.timeMax - 1) {
+    e.target.value = state.timeMax - 1;
+  }
+  state.timeMin = parseInt(e.target.value);
+  updateTimeDisplay();
+  applyFilters();
+});
+
+document.getElementById('timeMax').addEventListener('input', e => {
+  if (parseInt(e.target.value) < state.timeMin + 1) {
+    e.target.value = state.timeMin + 1;
+  }
+  state.timeMax = parseInt(e.target.value);
+  updateTimeDisplay();
+  applyFilters();
+});
+
+/* ═══════════════════════════════════════════
+   Search
+═══════════════════════════════════════════ */
+const searchInput = document.getElementById('searchInput');
+const searchResults = document.getElementById('searchResults');
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  if (!q) { searchResults.classList.remove('open'); return; }
+
+  const matches = SF_NEIGHBORHOODS.filter(n => n.name.toLowerCase().includes(q)).slice(0, 6);
+
+  if (!matches.length) { searchResults.classList.remove('open'); return; }
+
+  searchResults.innerHTML = '';
+  matches.forEach(n => {
+    const item = document.createElement('div');
+    item.className = 'search-result-item';
+    item.innerHTML = `${n.name}<small>Neighborhood · San Francisco</small>`;
+    item.onclick = () => {
+      map.setView([n.lat, n.lng], n.zoom, { animate: true });
+      searchInput.value = n.name;
+      searchResults.classList.remove('open');
+      highlightArea(n);
+    };
+    searchResults.appendChild(item);
+  });
+  searchResults.classList.add('open');
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) searchResults.classList.remove('open');
+});
+
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { searchResults.classList.remove('open'); searchInput.blur(); }
+});
+
+function highlightArea(n) {
+  const radius = 800;
+  const tempCircle = L.circle([n.lat, n.lng], {
+    radius,
+    fillColor: '#c77c3f',
+    fillOpacity: 0.08,
+    color: '#c77c3f',
+    weight: 1.5,
+    dashArray: '4,6',
+    opacity: 0.5,
+  }).addTo(map);
+
+  setTimeout(() => map.removeLayer(tempCircle), 3000);
+}
+
+/* ═══════════════════════════════════════════
+   Hints
+═══════════════════════════════════════════ */
+const hints = [
+  'Try filtering by <strong>outcome</strong> to see how stops cluster across the city.',
+  'Switch to <strong>Heatmap</strong> and use the time-of-day range to focus on different hours.',
+  'Compare <strong>reason for stop</strong> chips — each color in point view matches a reason category.',
+  'Zoom into a neighborhood and hover points for location, time, and district share of city stops.',
+];
+
+let hintIdx = 0;
+function updateHints() {
+  const hint = document.getElementById('hintText');
+  const yearActive = state.mapYear != null;
+  const active = state.reasons.size + state.outcomes.size + (yearActive ? 1 : 0);
+  if (active === 0) {
+    hint.innerHTML = hints[hintIdx % hints.length];
+    hintIdx++;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Boot
+═══════════════════════════════════════════ */
+updateTimeDisplay();
+
+(async function boot() {
+  const loading = document.getElementById('mapLoading');
+  const hint = document.getElementById('exploreHint');
+  try {
+    setMapBanner('');
+    await loadMapData();
+    buildFilterChips(allStops);
+    if (mapMeta && mapMeta.reason_breakdown_gps) {
+      console.info('[StopAtlas map] reason_for_stop counts (GPS + district rows, full DB):', mapMeta.reason_breakdown_gps);
+    }
+    if (mapMeta && mapMeta.sampling_fallback_error) {
+      const ver = mapMeta.mysql_version ? escapeHtml(mapMeta.mysql_version) : 'unknown';
+      setMapBanner(
+        `<strong>Using MOD fallback.</strong> Stratified window/UNION queries failed; sample uses <code>MOD(raw_row_number)</code> (reason mix may differ from the full dataset). MySQL: <code>${ver}</code>`,
+        'warn'
+      );
+    } else if (mapMeta && mapMeta.sampling === 'stratified_reason_union') {
+      const yNote = mapMeta.year_filter != null
+        ? ` <span style="opacity:.9">· Year <strong>${escapeHtml(String(mapMeta.year_filter))}</strong> only</span>`
+        : '';
+      setMapBanner(
+        `<strong>Stratified by reason (MySQL 5.7–friendly).</strong> ~1/stride per <code>reason_for_stop</code> via UNION + LIMIT.${yNote}`,
+        'info'
+      );
+    } else if (allStops.length === 0 && mapMeta && mapMeta.total_eligible > 0) {
+      setMapBanner(
+        '<strong>0 points in sample.</strong> If you use MySQL 8+ stratified mode, try a smaller <code>?stride=</code> (e.g. 4). Otherwise check the API response in Network.',
+        'warn'
+      );
+    } else if (allStops.length === 0 && (!mapMeta || !mapMeta.total_eligible)) {
+      setMapBanner(
+        '<strong>No GPS rows.</strong> Confirm <code>ca_san_francisco_50k</code> has lat/lng and district filled for at least some rows.',
+        'warn'
+      );
+    }
+    state.reasons.clear();
+    state.outcomes.clear();
+    applyFilters({ animatePoints: true });
+  } catch (e) {
+    console.error(e);
+    allStops.length = 0;
+    filteredStops = [];
+    buildFilterChips([]);
+    updateStats();
+    const lt = loading.querySelector('.loading-text');
+    if (lt) lt.textContent = 'Could not load map data.';
+    const msg = escapeHtml(String(e.message || e));
+    setMapBanner(
+      `<strong>Load failed.</strong> ${msg}<br><small>Open DevTools (F12) → <strong>Network</strong> → reload → click <code>data_api.php</code> → Response. Use URL like <code>http://localhost/…/map.html</code> (not <code>file://</code>).</small>`,
+      'error'
+    );
+  } finally {
+    loading.classList.add('done');
+    setTimeout(() => hint.classList.add('hidden'), 7000);
+  }
+})();
+</script>
+</body>
+</html>
