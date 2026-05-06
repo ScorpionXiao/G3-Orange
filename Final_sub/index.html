@@ -43,7 +43,7 @@
         <video
           id="heroPreviewVideo"
           class="hero-preview-video"
-          src="index_1.mp4"
+          src="index.mp4"
           autoplay
           loop
           playsinline
@@ -144,6 +144,9 @@
   var btn = document.getElementById('heroVideoMuteBtn');
   if (!video || !btn || !frame) return;
 
+  /** True only after user clicks the mute control to silence audio; blocks scroll-based auto-unmute. */
+  var userChoseMute = false;
+
   /** Cover column: scale up to fill, crop overflow; align to top so title sits under nav (no letterbox bars). */
   function layoutHeroVideo() {
     var vw = video.videoWidth;
@@ -181,11 +184,33 @@
 
   btn.addEventListener('click', function () {
     video.muted = !video.muted;
+    userChoseMute = video.muted;
     if (!video.muted) {
       video.play().catch(function () {});
     }
     syncMuteUi();
   });
+
+  var videoColumn = document.querySelector('.hero-right');
+  if (videoColumn && typeof IntersectionObserver !== 'undefined') {
+    var minVisibleRatio = 0.12;
+    var io = new IntersectionObserver(
+      function (entries) {
+        var entry = entries[0];
+        if (!entry) return;
+        var visible = entry.isIntersecting && entry.intersectionRatio >= minVisibleRatio;
+        if (!visible) {
+          video.muted = true;
+        } else if (!userChoseMute) {
+          video.muted = false;
+          video.play().catch(function () {});
+        }
+        syncMuteUi();
+      },
+      { threshold: [0, minVisibleRatio, 0.25, 0.5, 0.75, 1] }
+    );
+    io.observe(videoColumn);
+  }
 
   syncMuteUi();
 

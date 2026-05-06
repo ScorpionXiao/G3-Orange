@@ -34,15 +34,6 @@
 
     <div class="panel-header">
       <p class="panel-title">Explore Stops</p>
-
-      <!-- Search -->
-      <div class="search-wrap">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-        <input class="search-input" id="searchInput" type="text" placeholder="Search neighborhood…" autocomplete="off" />
-        <div class="search-results" id="searchResults"></div>
-      </div>
     </div>
 
     <div class="panel-body">
@@ -55,7 +46,7 @@
         <div class="view-toggle">
           <button class="view-btn active" id="viewPoints" onclick="setView('points')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="3"/><circle cx="19" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><circle cx="12" cy="12" r="3"/></svg>
-            Points
+            Scatter
           </button>
           <button class="view-btn" id="viewHeat" onclick="setView('heatmap')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/><circle cx="12" cy="12" r="2"/></svg>
@@ -82,6 +73,13 @@
           <span class="clear-btn" id="clearOutcome" onclick="clearFilter('outcome')">Clear</span>
         </p>
         <div class="chip-group" id="outcomeChips"></div>
+      </div>
+
+      <!-- District (SFPD letter codes A–J); single-select — tap active chip again for all districts -->
+      <div class="filter-section">
+        <p class="filter-label">District</p>
+        <p class="filter-hint">One at a time · tap the same chip again to show all districts</p>
+        <div class="chip-group chip-group-districts" id="districtChips"></div>
       </div>
 
       <!-- Year: reloads stratified sample from API (same sampling as full dataset) -->
@@ -112,7 +110,7 @@
       <span class="reset-all" onclick="resetAll()">↺ Reset all filters</span>
 
       <div class="hint-text" id="hintText">
-        Try switching to <strong>Heatmap</strong> to reveal density clusters — then filter by <em>Reason</em> to compare patterns.
+        Try switching to <strong>Heatmap</strong> or use the search bar above the map — filter by reason, outcome, or district as you type.
       </div>
 
     </div>
@@ -136,7 +134,17 @@
     </div>
   </aside>
 
-  <!-- Map -->
+  <!-- Map + centered search -->
+  <div class="map-stage">
+    <div class="map-search-overlay">
+      <div class="search-wrap map-search-wrap-top">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input class="search-input" id="searchInput" type="text" placeholder="Search reason, outcome, district, neighborhood…" autocomplete="off" aria-autocomplete="list" aria-controls="searchResults" />
+        <div class="search-results" id="searchResults" role="listbox"></div>
+      </div>
+    </div>
   <div id="map">
     <div class="map-loading" id="mapLoading">
       <div class="loading-inner">
@@ -149,8 +157,9 @@
 
     <div class="explore-hint" id="exploreHint">
       <strong>Explore tip</strong>
-      Hover any point to see stop details. Use filters on the left to uncover spatial patterns.
+      Hover any point for details. Use the search bar above or filters on the left.
     </div>
+  </div>
   </div>
 
 </div>
@@ -200,6 +209,21 @@ const REASON_COLORS = {
   'MPC Violation': '#6b6860',
   'NA': '#9b9890',
 };
+
+/** Dataset district letters → SFPD district names (same codes as analysis pages). */
+const DISTRICT_LABEL = {
+  A: 'Central',
+  B: 'Southern',
+  C: 'Bayview',
+  D: 'Mission',
+  E: 'Northern',
+  F: 'Park',
+  G: 'Richmond',
+  H: 'Ingleside',
+  I: 'Taraval',
+  J: 'Tenderloin',
+};
+const DISTRICT_CODES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
 
 const OUTCOME_BADGE = {
   'Warning': 'badge-outcome-warning',
@@ -352,6 +376,8 @@ const state = {
   view: 'points',
   reasons: new Set(),
   outcomes: new Set(),
+  /** SFPD district letter A–J, or null = all districts (single-select) */
+  districtCode: null,
   /** null = all years (no API filter); number = data_api ?year= */
   mapYear: null,
   timeMin: 0,
@@ -365,12 +391,101 @@ buildYearChips();
 let filteredStops = [];
 let markers = [];
 let heatLayer = null;
+let pointRevealTimers = [];
+let heatAnimRaf = null;
+
+function cancelHeatAnim() {
+  if (heatAnimRaf != null) {
+    cancelAnimationFrame(heatAnimRaf);
+    heatAnimRaf = null;
+  }
+}
+
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+/** Stagger reveal order: `'random'` shuffles; `'sequential'` follows row order */
+const MAP_POINT_REVEAL_ORDER = 'random';
+
+function computeStaggerTotalMs(n) {
+  if (n <= 1) return 550;
+  if (n <= 50) {
+    return Math.round(500 + (n / 50) * 500);
+  }
+  return Math.round(Math.min(2000, 1000 + (Math.min(n, 4000) / 4000) * 1000));
+}
+
+/** Each point’s own pop-in length (100–300 ms), slightly shorter when many points */
+function computePerPointRevealMs(n) {
+  return Math.round(Math.min(300, Math.max(100, 280 - Math.min(n, 120) * 1.2)));
+}
+
+function buildRevealOrder(n) {
+  if (MAP_POINT_REVEAL_ORDER !== 'random') {
+    return Array.from({ length: n }, (_, i) => i);
+  }
+  const a = Array.from({ length: n }, (_, i) => i);
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+let pointRevealGeneration = 0;
+
+function cancelPointRevealAnimations() {
+  pointRevealTimers.forEach(id => clearTimeout(id));
+  pointRevealTimers.length = 0;
+  pointRevealGeneration++;
+}
+
+/** Pop-in with radius + opacity (ease-out); aborts if revealGen stale */
+function animateMarkerReveal(marker, targetRadius, color, durationMs, revealGen) {
+  const startR = Math.max(2, targetRadius * 0.28);
+  marker.setStyle({
+    radius: startR,
+    fillOpacity: 0,
+    opacity: 0,
+    fillColor: color,
+    color: color,
+    weight: 1,
+  });
+  const t0 = performance.now();
+  function tick(now) {
+    if (revealGen !== pointRevealGeneration) return;
+    const u = Math.min(1, (now - t0) / durationMs);
+    const e = easeOutCubic(u);
+    marker.setStyle({
+      radius: startR + (targetRadius - startR) * e,
+      fillOpacity: 0.55 * e,
+      opacity: 0.7 * e,
+      fillColor: color,
+      color: color,
+      weight: 1,
+    });
+    if (u < 1) {
+      requestAnimationFrame(tick);
+    } else {
+      marker.setStyle({
+        radius: targetRadius,
+        fillOpacity: 0.55,
+        opacity: 0.7,
+        fillColor: color,
+        color: color,
+        weight: 1,
+      });
+    }
+  }
+  requestAnimationFrame(tick);
+}
 
 /* ═══════════════════════════════════════════
    Map init
 ═══════════════════════════════════════════ */
 const map = L.map('map', {
-  zoomControl: true,
+  zoomControl: false,
   attributionControl: true,
   preferCanvas: true,
 }).setView([37.762, -122.435], 13);
@@ -383,45 +498,68 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 /* ═══════════════════════════════════════════
    Filter logic
 ═══════════════════════════════════════════ */
+function stopDistrictLetter(s) {
+  const d = String(s.district || '').trim().toUpperCase();
+  return d.length ? d.charAt(0) : '';
+}
+
 function applyFilters(options = {}) {
-  const animatePoints = options.animatePoints === true;
+  const animate = options.animate !== false;
   filteredStops = allStops.filter(s => {
     if (state.reasons.size > 0 && !state.reasons.has(s.reason)) return false;
     if (state.outcomes.size > 0 && !state.outcomes.has(s.outcome)) return false;
+    if (state.districtCode != null) {
+      const letter = stopDistrictLetter(s);
+      if (letter !== state.districtCode) return false;
+    }
     if (s.hour < state.timeMin || s.hour > state.timeMax) return false;
     return true;
   });
   updateStats();
-  if (state.view === 'points') renderPoints(animatePoints);
-  else renderHeatmap();
+  if (state.view === 'points') renderPoints(animate);
+  else renderHeatmap(animate);
   updateHints();
 }
 
 /* ═══════════════════════════════════════════
    Render: Points
 ═══════════════════════════════════════════ */
-function renderPoints(animate = false) {
-  // clear heatmap
+function renderPoints(animate = true) {
+  cancelHeatAnim();
+  cancelPointRevealAnimations();
+  const revealGen = pointRevealGeneration;
+
   if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
 
-  // remove old markers
   markers.forEach(m => map.removeLayer(m));
   markers = [];
 
   const maxCount = Math.max(...filteredStops.map(s => s.count), 1);
+  const n = filteredStops.length;
 
   filteredStops.forEach((s, i) => {
     const color = colorForReason(s.reason);
     const r = 4 + Math.sqrt(s.count / maxCount) * 8;
 
-    const m = L.circleMarker([s.lat, s.lng], {
-      radius: r,
-      fillColor: color,
-      fillOpacity: animate ? 0 : 0.55,
-      color: color,
-      weight: 1,
-      opacity: animate ? 0 : 0.7,
-    })
+    const initialStyle = !animate || n === 0
+      ? {
+          radius: r,
+          fillColor: color,
+          fillOpacity: 0.55,
+          color: color,
+          weight: 1,
+          opacity: 0.7,
+        }
+      : {
+          radius: Math.max(2, r * 0.28),
+          fillColor: color,
+          fillOpacity: 0,
+          color: color,
+          weight: 1,
+          opacity: 0,
+        };
+
+    const m = L.circleMarker([s.lat, s.lng], initialStyle)
     .bindTooltip(buildTooltip(s), {
       className: 'stop-tooltip',
       direction: 'top',
@@ -429,13 +567,6 @@ function renderPoints(animate = false) {
       opacity: 1,
     })
     .addTo(map);
-
-    if (animate) {
-      const delay = Math.random() * 800;
-      setTimeout(() => {
-        m.setStyle({ fillOpacity: 0.55, opacity: 0.7 });
-      }, delay);
-    }
 
     m.on('mouseover', function() {
       this.setStyle({ fillOpacity: 0.85, weight: 2, opacity: 1 });
@@ -447,16 +578,38 @@ function renderPoints(animate = false) {
 
     markers.push(m);
   });
+
+  if (!animate || n === 0) return;
+
+  const totalMs = computeStaggerTotalMs(n);
+  const eachMs = computePerPointRevealMs(n);
+  const span = Math.max(0, totalMs - eachMs);
+  const order = buildRevealOrder(n);
+
+  order.forEach((dataIdx, seq) => {
+    const m = markers[dataIdx];
+    const s = filteredStops[dataIdx];
+    const color = colorForReason(s.reason);
+    const r = 4 + Math.sqrt(s.count / maxCount) * 8;
+    const startDelay = n <= 1 ? 0 : (seq / (n - 1)) * span;
+    pointRevealTimers.push(setTimeout(() => {
+      if (revealGen !== pointRevealGeneration) return;
+      animateMarkerReveal(m, r, color, eachMs, revealGen);
+    }, startDelay));
+  });
 }
 
 /* ═══════════════════════════════════════════
    Render: Heatmap
 ═══════════════════════════════════════════ */
-function renderHeatmap() {
+function renderHeatmap(animate = true) {
+  cancelHeatAnim();
+  cancelPointRevealAnimations();
   markers.forEach(m => map.removeLayer(m));
   markers = [];
 
   if (heatLayer) map.removeLayer(heatLayer);
+  heatLayer = null;
 
   const count = filteredStops.length;
   if (count === 0) {
@@ -486,21 +639,40 @@ function renderHeatmap() {
   const maxCount = Math.max(...filteredStops.map(s => s.count || 1));
   const wgt = s => (s.count || 1) / maxCount;
   const points = filteredStops.map(s => [s.lat, s.lng, wgt(s)]);
+  const targetMax = max;
+  const startMax = targetMax * 14;
 
-  if (typeof L.heatLayer === 'function') {
-    heatLayer = L.heatLayer(points, {
-      radius,
-      blur,
-      maxZoom: 17,
-      max,
-      gradient: HEAT_GRADIENT,
-    }).addTo(map);
-  } else {
-    // fallback if heat plugin unavailable
+  if (typeof L.heatLayer !== 'function') {
     renderPoints(false);
     document.getElementById('viewPoints').classList.add('active');
     document.getElementById('viewHeat').classList.remove('active');
+    return;
   }
+
+  heatLayer = L.heatLayer(points, {
+    radius,
+    blur,
+    maxZoom: 17,
+    max: animate ? startMax : targetMax,
+    gradient: HEAT_GRADIENT,
+  }).addTo(map);
+
+  if (!animate || typeof heatLayer.setOptions !== 'function') return;
+
+  const t0 = performance.now();
+  function tick(now) {
+    if (!heatLayer || !heatLayer._map) {
+      heatAnimRaf = null;
+      return;
+    }
+    const elapsed = Math.min(1, (now - t0) / 1000);
+    const eased = easeOutCubic(elapsed);
+    const curMax = startMax + (targetMax - startMax) * eased;
+    heatLayer.setOptions({ max: elapsed >= 1 ? targetMax : curMax });
+    if (elapsed < 1) heatAnimRaf = requestAnimationFrame(tick);
+    else heatAnimRaf = null;
+  }
+  heatAnimRaf = requestAnimationFrame(tick);
 }
 
 /* ═══════════════════════════════════════════
@@ -581,7 +753,67 @@ function setView(v) {
 /* ═══════════════════════════════════════════
    Chip filters
 ═══════════════════════════════════════════ */
+function buildDistrictChips() {
+  const el = document.getElementById('districtChips');
+  if (!el) return;
+  el.innerHTML = '';
+  DISTRICT_CODES.forEach(code => {
+    const c = document.createElement('div');
+    c.className = 'chip';
+    c.textContent = DISTRICT_LABEL[code] || code;
+    c.dataset.district = code;
+    c.title = `District ${code}: ${DISTRICT_LABEL[code] || code}`;
+    c.onclick = () => selectDistrictFilter(code);
+    if (state.districtCode === code) c.classList.add('active');
+    el.appendChild(c);
+  });
+}
+
+/** Single-select district: tap another to switch; tap active again for all districts */
+function selectDistrictFilter(code) {
+  if (state.districtCode === code) {
+    state.districtCode = null;
+  } else {
+    state.districtCode = code;
+  }
+  document.querySelectorAll('#districtChips .chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.district === state.districtCode);
+  });
+  applyFilters({ animate: true });
+}
+
+function setDistrictFromSearch(code) {
+  state.districtCode = code;
+  buildDistrictChips();
+  applyFilters({ animate: true });
+}
+
+function ensureReasonFilter(reasonText) {
+  if (!state.reasons.has(reasonText)) {
+    state.reasons.add(reasonText);
+    document.querySelectorAll('#reasonChips .chip').forEach(c => {
+      if (c.textContent === reasonText) c.classList.add('active');
+    });
+    const btn = document.getElementById('clearReason');
+    if (btn) btn.classList.add('visible');
+  }
+  applyFilters({ animate: true });
+}
+
+function ensureOutcomeFilter(outcomeText) {
+  if (!state.outcomes.has(outcomeText)) {
+    state.outcomes.add(outcomeText);
+    document.querySelectorAll('#outcomeChips .chip').forEach(c => {
+      if (c.textContent === outcomeText) c.classList.add('active');
+    });
+    const btn = document.getElementById('clearOutcome');
+    if (btn) btn.classList.add('visible');
+  }
+  applyFilters({ animate: true });
+}
+
 function buildFilterChips(stops) {
+  buildDistrictChips();
   const reasonEl = document.getElementById('reasonChips');
   const outcomeEl = document.getElementById('outcomeChips');
   reasonEl.innerHTML = '';
@@ -608,8 +840,11 @@ function buildFilterChips(stops) {
 }
 
 function toggleChip(type, value, el) {
-  const set = type === 'reason' ? state.reasons : state.outcomes;
-  const clearId = type === 'reason' ? 'clearReason' : 'clearOutcome';
+  const sets = { reason: state.reasons, outcome: state.outcomes };
+  const clearIds = { reason: 'clearReason', outcome: 'clearOutcome' };
+  const set = sets[type];
+  const clearId = clearIds[type];
+  if (!set || !clearId) return;
 
   if (set.has(value)) {
     set.delete(value);
@@ -619,11 +854,10 @@ function toggleChip(type, value, el) {
     el.classList.add('active');
   }
 
-  // show/hide clear button
   const btn = document.getElementById(clearId);
-  btn.classList.toggle('visible', set.size > 0);
+  if (btn) btn.classList.toggle('visible', set.size > 0);
 
-  applyFilters();
+  applyFilters({ animate: true });
 }
 
 function clearFilter(type) {
@@ -631,21 +865,22 @@ function clearFilter(type) {
     state.reasons.clear();
     document.querySelectorAll('#reasonChips .chip').forEach(c => c.classList.remove('active'));
     document.getElementById('clearReason').classList.remove('visible');
-  } else {
+  } else if (type === 'outcome') {
     state.outcomes.clear();
     document.querySelectorAll('#outcomeChips .chip').forEach(c => c.classList.remove('active'));
     document.getElementById('clearOutcome').classList.remove('visible');
   }
-  applyFilters();
+  applyFilters({ animate: true });
 }
 
 async function resetAll() {
   state.reasons.clear();
   state.outcomes.clear();
+  state.districtCode = null;
   state.mapYear = null;
   state.timeMin = 0;
   state.timeMax = 23;
-  document.querySelectorAll('#reasonChips .chip, #outcomeChips .chip').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('#reasonChips .chip, #outcomeChips .chip, #districtChips .chip').forEach(c => c.classList.remove('active'));
   document.getElementById('clearReason').classList.remove('visible');
   document.getElementById('clearOutcome').classList.remove('visible');
   syncYearChipStyles();
@@ -716,7 +951,7 @@ async function selectMapYear(year) {
   try {
     await loadMapData();
     buildFilterChips(allStops);
-    applyFilters({ animatePoints: true });
+    applyFilters({ animate: true });
   } catch (e) {
     console.error(e);
     setMapBanner(`<strong>Reload failed.</strong> ${escapeHtml(String(e.message))}`, 'error');
@@ -728,6 +963,16 @@ async function selectMapYear(year) {
 /* ═══════════════════════════════════════════
    Time slider
 ═══════════════════════════════════════════ */
+let timeFilterDebounceId = null;
+
+function scheduleApplyFiltersAfterTimeChange() {
+  clearTimeout(timeFilterDebounceId);
+  timeFilterDebounceId = setTimeout(() => {
+    timeFilterDebounceId = null;
+    applyFilters({ animate: true });
+  }, 320);
+}
+
 function updateTimeDisplay() {
   const mn = parseInt(document.getElementById('timeMin').value);
   const mx = parseInt(document.getElementById('timeMax').value);
@@ -753,7 +998,7 @@ document.getElementById('timeMin').addEventListener('input', e => {
   }
   state.timeMin = parseInt(e.target.value);
   updateTimeDisplay();
-  applyFilters();
+  scheduleApplyFiltersAfterTimeChange();
 });
 
 document.getElementById('timeMax').addEventListener('input', e => {
@@ -762,45 +1007,104 @@ document.getElementById('timeMax').addEventListener('input', e => {
   }
   state.timeMax = parseInt(e.target.value);
   updateTimeDisplay();
-  applyFilters();
+  scheduleApplyFiltersAfterTimeChange();
 });
 
 /* ═══════════════════════════════════════════
-   Search
+   Search (filters + neighborhoods)
 ═══════════════════════════════════════════ */
+function textMatchScore(haystack, needle) {
+  const h = haystack.toLowerCase();
+  const n = needle.toLowerCase();
+  if (!n.length) return 99;
+  if (h === n) return 0;
+  if (h.startsWith(n)) return 1;
+  if (h.includes(n)) return 2;
+  return 99;
+}
+
+function collectSearchSuggestions(query) {
+  const q = query.trim();
+  if (!q) return [];
+  const rows = [];
+
+  REASON_FOR_STOP_OPTIONS.forEach(text => {
+    const sc = textMatchScore(text, q);
+    if (sc < 50) rows.push({ kind: 'reason', score: sc, primary: text, sub: 'Stop reason' });
+  });
+
+  DISTRICT_CODES.forEach(code => {
+    const name = DISTRICT_LABEL[code];
+    const sc = Math.min(textMatchScore(name, q), textMatchScore(code, q));
+    if (sc < 50) rows.push({ kind: 'district', score: sc, code: code, primary: name, sub: `District (${code})` });
+  });
+
+  [...new Set(allStops.map(s => s.outcome).filter(Boolean))].forEach(o => {
+    const sc = textMatchScore(o, q);
+    if (sc < 50) rows.push({ kind: 'outcome', score: sc, primary: o, sub: 'Outcome' });
+  });
+
+  SF_NEIGHBORHOODS.forEach(n => {
+    const sc = textMatchScore(n.name, q);
+    if (sc < 50) rows.push({ kind: 'hood', score: sc, n: n, primary: n.name, sub: 'Neighborhood' });
+  });
+
+  rows.sort((a, b) => a.score - b.score || String(a.primary).localeCompare(String(b.primary)));
+  return rows.slice(0, 14);
+}
+
+function renderSearchSuggestionRows(rows) {
+  const resultsEl = document.getElementById('searchResults');
+  resultsEl.innerHTML = '';
+  rows.forEach(row => {
+    const item = document.createElement('div');
+    item.className = 'search-result-item';
+    item.setAttribute('role', 'option');
+    item.innerHTML = `${escapeHtml(row.primary)}<small>${escapeHtml(row.sub)}</small>`;
+    item.onclick = () => {
+      if (row.kind === 'reason') ensureReasonFilter(row.primary);
+      else if (row.kind === 'outcome') ensureOutcomeFilter(row.primary);
+      else if (row.kind === 'district') setDistrictFromSearch(row.code);
+      else if (row.kind === 'hood') {
+        map.setView([row.n.lat, row.n.lng], row.n.zoom, { animate: true });
+        highlightArea(row.n);
+      }
+      document.getElementById('searchInput').value = '';
+      resultsEl.classList.remove('open');
+    };
+    resultsEl.appendChild(item);
+  });
+}
+
 const searchInput = document.getElementById('searchInput');
 const searchResults = document.getElementById('searchResults');
 
 searchInput.addEventListener('input', () => {
-  const q = searchInput.value.trim().toLowerCase();
-  if (!q) { searchResults.classList.remove('open'); return; }
-
-  const matches = SF_NEIGHBORHOODS.filter(n => n.name.toLowerCase().includes(q)).slice(0, 6);
-
-  if (!matches.length) { searchResults.classList.remove('open'); return; }
-
-  searchResults.innerHTML = '';
-  matches.forEach(n => {
-    const item = document.createElement('div');
-    item.className = 'search-result-item';
-    item.innerHTML = `${n.name}<small>Neighborhood · San Francisco</small>`;
-    item.onclick = () => {
-      map.setView([n.lat, n.lng], n.zoom, { animate: true });
-      searchInput.value = n.name;
-      searchResults.classList.remove('open');
-      highlightArea(n);
-    };
-    searchResults.appendChild(item);
-  });
+  const q = searchInput.value.trim();
+  if (!q) {
+    searchResults.classList.remove('open');
+    searchResults.innerHTML = '';
+    return;
+  }
+  const rows = collectSearchSuggestions(q);
+  if (!rows.length) {
+    searchResults.classList.remove('open');
+    searchResults.innerHTML = '';
+    return;
+  }
+  renderSearchSuggestionRows(rows);
   searchResults.classList.add('open');
 });
 
 document.addEventListener('click', e => {
-  if (!e.target.closest('.search-wrap')) searchResults.classList.remove('open');
+  if (!e.target.closest('.map-search-wrap-top')) searchResults.classList.remove('open');
 });
 
 searchInput.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { searchResults.classList.remove('open'); searchInput.blur(); }
+  if (e.key === 'Escape') {
+    searchResults.classList.remove('open');
+    searchInput.blur();
+  }
 });
 
 function highlightArea(n) {
@@ -822,9 +1126,9 @@ function highlightArea(n) {
    Hints
 ═══════════════════════════════════════════ */
 const hints = [
-  'Try filtering by <strong>outcome</strong> to see how stops cluster across the city.',
+  'Try filtering by <strong>outcome</strong> or <strong>district</strong> to see how stops cluster across the city.',
   'Switch to <strong>Heatmap</strong> and use the time-of-day range to focus on different hours.',
-  'Compare <strong>reason for stop</strong> chips — each color in point view matches a reason category.',
+  'Compare <strong>reason for stop</strong> chips — each color in scatter view matches a reason category.',
   'Zoom into a neighborhood and hover points for location, time, and district share of city stops.',
 ];
 
@@ -832,7 +1136,7 @@ let hintIdx = 0;
 function updateHints() {
   const hint = document.getElementById('hintText');
   const yearActive = state.mapYear != null;
-  const active = state.reasons.size + state.outcomes.size + (yearActive ? 1 : 0);
+  const active = state.reasons.size + state.outcomes.size + (state.districtCode != null ? 1 : 0) + (yearActive ? 1 : 0);
   if (active === 0) {
     hint.innerHTML = hints[hintIdx % hints.length];
     hintIdx++;
@@ -860,14 +1164,6 @@ updateTimeDisplay();
         `<strong>Using MOD fallback.</strong> Stratified window/UNION queries failed; sample uses <code>MOD(raw_row_number)</code> (reason mix may differ from the full dataset). MySQL: <code>${ver}</code>`,
         'warn'
       );
-    } else if (mapMeta && mapMeta.sampling === 'stratified_reason_union') {
-      const yNote = mapMeta.year_filter != null
-        ? ` <span style="opacity:.9">· Year <strong>${escapeHtml(String(mapMeta.year_filter))}</strong> only</span>`
-        : '';
-      setMapBanner(
-        `<strong>Stratified by reason (MySQL 5.7–friendly).</strong> ~1/stride per <code>reason_for_stop</code> via UNION + LIMIT.${yNote}`,
-        'info'
-      );
     } else if (allStops.length === 0 && mapMeta && mapMeta.total_eligible > 0) {
       setMapBanner(
         '<strong>0 points in sample.</strong> If you use MySQL 8+ stratified mode, try a smaller <code>?stride=</code> (e.g. 4). Otherwise check the API response in Network.',
@@ -881,7 +1177,12 @@ updateTimeDisplay();
     }
     state.reasons.clear();
     state.outcomes.clear();
-    applyFilters({ animatePoints: true });
+    state.districtCode = null;
+    buildDistrictChips();
+    applyFilters({ animate: true });
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+    });
   } catch (e) {
     console.error(e);
     allStops.length = 0;

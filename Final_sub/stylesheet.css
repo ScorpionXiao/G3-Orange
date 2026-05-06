@@ -15,6 +15,8 @@
   --rule-light: #dfd6ca;
   --ink-faint: #949085;
   --accent-dust: #a67c52;
+  /** <strong> emphasis — deep orange, higher contrast than body text on paper */
+  --strong-orange: #a63d0f;
 }
 
 /* ── Reset ── */
@@ -450,9 +452,23 @@ a { color: inherit; }
   border: 1px solid var(--rule);
   border-left: 4px solid var(--accent);
 }
-.geography-page .analysis-block {
-  margin-top: 0;
-  margin-bottom: 32px;
+/* Geography lead: same title→box gap as other analysis tabs (28px); box→table like demographics rhythm */
+.geography-page .analysis-block--lead {
+  margin-top: 28px;
+  margin-bottom: 52px;
+}
+.geography-page .analysis-block--takeaway {
+  margin-top: 28px;
+  margin-bottom: 0;
+}
+.geography-page .analysis-stack {
+  margin-bottom: 0;
+}
+
+/* Same gap as Demographics intro → “By Race” (52px). Use .section-title + .analysis-block — :first-of-type does not match (first div is .section-label). */
+.time-page #temporal > .section-title + .analysis-block,
+.outcome-page #outcomes > .section-title + .analysis-block {
+  margin-bottom: 52px;
 }
 .analysis-kicker {
   font-family: 'DM Serif Display', serif;
@@ -485,6 +501,17 @@ a { color: inherit; }
 .geography-page .table-wrap {
   max-height: 470px;
   overflow-y: auto;
+  margin-bottom: 48px;
+}
+.geography-page tbody tr.district-table-row {
+  cursor: pointer;
+}
+.geography-page tbody tr.district-table-row:hover {
+  background: rgba(216, 177, 138, 0.12);
+}
+.geography-page tbody tr.district-row-selected {
+  background: rgba(216, 177, 138, 0.22);
+  box-shadow: inset 3px 0 0 var(--accent-deep);
 }
 .table-wrap thead th {
   position: sticky;
@@ -586,6 +613,23 @@ tbody td.accent {
 .analysis-note p:last-child {
   margin-bottom: 0;
 }
+.analysis-note p.analysis-note-caveat {
+  font-size: 13px;
+  line-height: 1.65;
+  padding-top: 14px;
+  margin-top: 6px;
+  border-top: 1px solid var(--rule-light);
+  color: var(--ink-faint);
+}
+/*
+ * Analysis prose: parent <p> uses ink-light; emphasis must stay visibly orange.
+ * Use literal hex + !important so Leaflet/third-party CSS and stale caches cannot flatten strong back to grey.
+ */
+.data-section .analysis-block p strong,
+.data-section .analysis-note p strong {
+  color: #a63d0f !important;
+  font-weight: 600 !important;
+}
 .chart-card {
   background: var(--paper);
   border: 1px solid var(--rule);
@@ -646,6 +690,37 @@ tbody td.accent {
   overflow: hidden;
   border: 1px solid var(--rule);
 }
+.geography-page .district-boundary-map-wrap {
+  position: relative;
+}
+.geography-page .district-boundary-map-inner {
+  width: 100%;
+  height: 100%;
+}
+.geography-page .district-boundary-reset-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 700;
+  padding: 7px 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  background: rgba(251, 243, 232, 0.94);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.geography-page .district-boundary-reset-btn:hover {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--accent-warm);
+}
 .map-wrap .leaflet-container {
   width: 100%;
   height: 100%;
@@ -704,6 +779,24 @@ tbody td.accent {
   color: var(--ink);
   letter-spacing: 0.01em;
   text-shadow: 0 0 6px rgba(251, 243, 232, 0.95), 0 0 2px #fbf3e8;
+}
+.geography-page .leaflet-tooltip.district-pct-tooltip {
+  padding: 8px 12px !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12) !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 12px !important;
+  color: var(--ink) !important;
+  background: rgba(251, 243, 232, 0.96) !important;
+}
+.geography-page .district-tooltip-inner strong {
+  font-weight: 600;
+  font-size: 12px;
+}
+.geography-page .district-tooltip-pct {
+  font-size: 11px;
+  color: var(--ink-light);
 }
 
 .demo-subsection-label {
@@ -1490,6 +1583,36 @@ body.map-app .masthead {
   right: 0;
   display: flex;
 }
+.map-stage {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  /* Fill shell height so #map’s flex:1 works (was broken when #map moved inside this wrapper). */
+  display: flex;
+  flex-direction: column;
+}
+.map-search-overlay {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  width: min(560px, calc(100% - 32px));
+  pointer-events: none;
+}
+.map-search-wrap-top {
+  pointer-events: auto;
+}
+.map-search-wrap-top .search-input {
+  padding: 11px 14px 11px 38px;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+.map-search-wrap-top .search-results {
+  max-height: min(340px, 42vh);
+  overflow-y: auto;
+}
 .panel {
   width: var(--panel-w);
   flex-shrink: 0;
@@ -1823,6 +1946,7 @@ body.map-app .masthead {
 }
 #map {
   flex: 1;
+  min-height: 0;
   position: relative;
 }
 body.map-app .leaflet-tile {
@@ -2037,4 +2161,9 @@ body.map-app .leaflet-control-zoom a:hover {
   height: 1px;
   background: var(--rule-light);
   margin: 6px 0 18px;
+}
+
+strong {
+  color: var(--strong-orange, #a63d0f);
+  font-weight: 600;
 }

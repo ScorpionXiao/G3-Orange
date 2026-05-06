@@ -10,7 +10,7 @@
   href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
 />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="stylesheet.css">
+<link rel="stylesheet" href="stylesheet.css?v=20260206">
 </head>
 <body class="geography-page">
 
@@ -41,7 +41,7 @@
   <div class="section-title">Where do stops happen?</div>
   
 
-  <div class="analysis-block">
+  <div class="analysis-block analysis-block--lead">
     <p>
       Stop counts vary sharply across the city’s police districts: a few areas account for a disproportionate share of observations, while others register far fewer. The table and maps below summarize that imbalance using the district letter codes recorded in the dataset, aligned to SFPD boundary geography where possible.
     </p>
@@ -74,10 +74,15 @@
           <div class="chart-title">SFPD district boundaries</div>
           <div class="chart-label">Chart 1 of 2</div>
         </div>
-        <div id="districtBoundaryMap" class="map-wrap" role="img" aria-label="SFPD districts map"></div>
+        <div class="map-wrap district-boundary-map-wrap" role="presentation">
+          <button type="button" id="districtBoundaryResetBtn" class="district-boundary-reset-btn" aria-label="Reset district map to overview">
+            Reset view
+          </button>
+          <div id="districtBoundaryMap" class="district-boundary-map-inner" role="img" aria-label="SFPD districts map"></div>
+        </div>
       </div>
       <div class="analysis-note">
-        <h3>District boundaries &amp; codes</h3>
+        <h3>District &amp; codes</h3>
         
         <p>
           Stop counts are heavily skewed toward a few districts: <strong>Ingleside, Taraval, and Southern</strong> each account for a large share of stops (well above most others), while several districts fall under roughly 5%. That imbalance means enforcement intensity is concentrated in specific corridors rather than spread evenly across the city.
@@ -96,18 +101,36 @@
       <div class="analysis-note">
         <h3>Spatial concentration</h3>
         <p>
-          Stops are not evenly distributed across San Francisco. Instead, they form several clear clusters concentrated in specific corridors, particularly in the central and southeastern parts of the city.
+          In the scatter plot, each point represents an aggregated location, where the number of stops <strong>occur at the same coordinates</strong> is encoded visually. Higher counts appear as darker, larger, and more opaque circles, scaled relative to the maximum value in the dataset.
         </p>
         <p>
-          The map shows that areas such as Mission, Ingleside, and Bayview have noticeably higher densities of stops, while large portions of the western districts remain relatively sparse. This suggests that stop activity is closely tied to particular urban zones rather than spread uniformly.
+          Although several <strong>northeastern districts</strong> do not have the highest total number of traffic stops, many stops occur at the same coordinates, making this area appear <strong>the most densely</strong> clustered on the map. In contrast, Ingleside—despite having the highest total stops—is less prominent, indicating that its stops are spread across multiple locations rather than concentrated.
         </p>
       </div>
     </div>
+  </div>
+
+  <div class="analysis-block analysis-block--takeaway">
+    <div class="analysis-kicker">Key Takeaway</div>
+    <p>
+      The higher density in northeastern districts is driven by <strong>concentrated urban activity, dense street networks, and repeated enforcement</strong> at key intersections. In contrast, southern and southwestern districts exhibit a more <strong>dispersed pattern</strong>, where stops are primarily aligned with <strong>major arterial roads</strong> rather than concentrated at specific locations.
+    </p>
   </div>
 </section>
 
 <script>
 const ACCENT = '#D8B18A';
+/** Matches `stylesheet.css` `--ink` — district highlight outline (not pure black). */
+const INK = '#424242';
+
+/** Filled by {@link renderTable} — % of all stops per letter code for district-map tooltips. */
+let geographyDistrictPct = {};
+
+/** Set after district boundary map loads — focuses & highlights a district from the table. */
+let selectDistrictOnBoundaryMap = null;
+
+/** Clears district highlight + table row selection + restores map bounds (after boundary map loads). */
+let resetDistrictBoundaryMap = null;
 
 /** Letters A–J in ca_san_francisco_50k → SFPD district names (not the generic OPP template). */
 const districtNames = {
@@ -149,6 +172,11 @@ const districtColors = {
   I: '#e2b48c',
   J: '#b89a82'
 };
+
+/** Central, Southern, Northern, Tenderloin — pulse circles when cursor is inside their polygons on the geo map. */
+const GEO_NE_INTERACTIVE_CODES = new Set(['A', 'B', 'E', 'J']);
+/** map.html “Moving Violation” — orange→red pulse target */
+const GEO_MAP_REF_RED = '#cc6858';
 
 function parseCSV(text) {
   const rows = [];
@@ -256,6 +284,7 @@ function sampleByDistrict(rows, perDistrict = 3, maxRows = 30) {
 function renderTable(districtRows) {
   const tbody = document.getElementById('table1-body');
   tbody.innerHTML = '';
+  geographyDistrictPct = {};
 
   const excludeCodes = new Set(['K', 'S', 'T']);
   const grandTotal = districtRows.reduce((s, d) => s + Number(d.stop_count), 0);
@@ -270,11 +299,20 @@ function renderTable(districtRows) {
     const count = Number(d.stop_count);
     const pct   = grandTotal > 0 ? (100 * count / grandTotal).toFixed(1) : '0.0';
     const barW  = max > 0 ? Math.round(120 * count / max) : 0;
-    const name  = districtNames[d.district_code] || d.district_code || '—';
-    const color = districtColors[d.district_code] || ACCENT;
+    const codeKey = String(d.district_code || '').trim().toUpperCase();
+    const name  = districtNames[codeKey] || districtNames[d.district_code] || d.district_code || '—';
+    const color = districtColors[codeKey] || districtColors[d.district_code] || ACCENT;
+
+    if (codeKey) {
+      geographyDistrictPct[codeKey] = {
+        pct,
+        count,
+        name,
+      };
+    }
 
     tbody.innerHTML += `
-      <tr>
+      <tr class="district-table-row" data-district-code="${codeKey}" title="Show this district on the map below">
         <td class="num">${i + 1}</td>
         <td class="num accent">${d.district_code}</td>
         <td><strong>${name}</strong></td>
@@ -309,6 +347,93 @@ function getColor(count, max) {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
+function parseRgbCss(str) {
+  if (!str || typeof str !== 'string') return { r: 204, g: 104, b: 88 };
+  const m = str.trim().match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i);
+  if (m) return { r: +m[1], g: +m[2], b: +m[3] };
+  const h = str.trim();
+  if (h.startsWith('#')) {
+    const hex = h.slice(1);
+    const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+    if (full.length === 6) {
+      return {
+        r: parseInt(full.slice(0, 2), 16),
+        g: parseInt(full.slice(2, 4), 16),
+        b: parseInt(full.slice(4, 6), 16),
+      };
+    }
+  }
+  return { r: 204, g: 104, b: 88 };
+}
+
+function rgbToCss(rgb) {
+  return `rgb(${Math.round(rgb.r)},${Math.round(rgb.g)},${Math.round(rgb.b)})`;
+}
+
+function lerpRgb(a, b, t) {
+  const u = Math.min(1, Math.max(0, t));
+  return {
+    r: a.r + (b.r - a.r) * u,
+    g: a.g + (b.g - a.g) * u,
+    b: a.b + (b.b - a.b) * u,
+  };
+}
+
+function districtLetterFromGeoRow(raw) {
+  const s = String(raw ?? '').trim();
+  if (/^[A-Ja-j]$/.test(s)) return s.toUpperCase();
+  const lower = s.toLowerCase();
+  for (const [code, name] of Object.entries(districtNames)) {
+    if (name.toLowerCase() === lower) return code;
+  }
+  return '';
+}
+
+function pipRingLatLng(lat, lng, ring) {
+  let inside = false;
+  const n = ring.length;
+  if (n < 3) return false;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+    const intersect =
+      (yi > lat) !== (yj > lat) && lng < ((xj - xi) * (lat - yi)) / (yj - yi + 1e-18) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInGeometry(lat, lng, geometry) {
+  if (!geometry) return false;
+  if (geometry.type === 'Polygon') {
+    const coords = geometry.coordinates;
+    if (!coords || !coords[0]) return false;
+    if (!pipRingLatLng(lat, lng, coords[0])) return false;
+    for (let h = 1; h < coords.length; h++) {
+      if (pipRingLatLng(lat, lng, coords[h])) return false;
+    }
+    return true;
+  }
+  if (geometry.type === 'MultiPolygon') {
+    for (const poly of geometry.coordinates || []) {
+      if (!poly || !poly[0]) continue;
+      if (!pipRingLatLng(lat, lng, poly[0])) continue;
+      let inHole = false;
+      for (let h = 1; h < poly.length; h++) {
+        if (pipRingLatLng(lat, lng, poly[h])) {
+          inHole = true;
+          break;
+        }
+      }
+      if (!inHole) return true;
+    }
+    return false;
+  }
+  return false;
+}
+
 /** Approximate label anchor inside polygon. */
 function geometryLabelPoint(geom) {
   function centroidRing(ring) {
@@ -333,9 +458,40 @@ function geometryLabelPoint(geom) {
   return [37.76, -122.42];
 }
 
+function defaultBoundaryStyle() {
+  return {
+    color: ACCENT,
+    weight: 2.5,
+    opacity: 1,
+    fillColor: ACCENT,
+    fillOpacity: 0,
+  };
+}
+
+function selectedBoundaryStyle(code) {
+  const fill = districtColor(code);
+  return {
+    color: INK,
+    weight: 4,
+    opacity: 1,
+    fillColor: fill,
+    fillOpacity: 0.28,
+  };
+}
+
+function syncTableDistrictSelection(selectedCode) {
+  document.querySelectorAll('#table1-body tr[data-district-code]').forEach((tr) => {
+    const c = tr.getAttribute('data-district-code');
+    tr.classList.toggle('district-row-selected', !!selectedCode && c === selectedCode);
+  });
+}
+
 async function renderDistrictBoundaryMap() {
   const host = document.getElementById('districtBoundaryMap');
   if (!host) return;
+
+  selectDistrictOnBoundaryMap = null;
+  resetDistrictBoundaryMap = null;
 
   let gj;
   try {
@@ -353,7 +509,7 @@ async function renderDistrictBoundaryMap() {
 
   const map = L.map('districtBoundaryMap', {
     scrollWheelZoom: false,
-    zoomControl: true,
+    zoomControl: false,
     attributionControl: true
   }).setView([37.76, -122.42], 11);
 
@@ -371,6 +527,7 @@ async function renderDistrictBoundaryMap() {
   });
 
   const layerGroup = L.layerGroup().addTo(map);
+  const layersByCode = {};
   let combinedBounds = null;
 
   features.forEach((feat) => {
@@ -378,16 +535,14 @@ async function renderDistrictBoundaryMap() {
     const upper = String(rawDist || '').trim().toUpperCase();
     const code = sfpdDistrictToDatasetCode[upper];
     const geoLayer = L.geoJSON(feat, {
-      style: {
-        color: ACCENT,
-        weight: 2.5,
-        opacity: 1,
-        fillColor: ACCENT,
-        fillOpacity: 0
-      }
+      style: defaultBoundaryStyle(),
     }).addTo(layerGroup);
     const b = geoLayer.getBounds();
     combinedBounds = combinedBounds ? combinedBounds.extend(b) : b;
+
+    if (code) {
+      layersByCode[code] = geoLayer;
+    }
 
     const pt = geometryLabelPoint(feat.geometry);
     const fallbackName = upper
@@ -410,15 +565,81 @@ async function renderDistrictBoundaryMap() {
     L.marker(pt, { icon }).addTo(layerGroup);
   });
 
+  function applyDistrictHighlight(code) {
+    Object.entries(layersByCode).forEach(([c, lyr]) => {
+      lyr.unbindTooltip();
+      lyr.setStyle(c === code ? selectedBoundaryStyle(c) : defaultBoundaryStyle());
+      if (c === code) {
+        const info = geographyDistrictPct[c];
+        const title = `${districtLabel(c)} (${c})`;
+        const pctLine = info
+          ? `<span class="district-tooltip-pct">${info.pct}% of all stops</span>`
+          : '';
+        lyr.bindTooltip(
+          `<div class="district-tooltip-inner"><strong>${title}</strong>${pctLine ? `<br>${pctLine}` : ''}</div>`,
+          {
+            sticky: true,
+            direction: 'auto',
+            opacity: 1,
+            className: 'district-pct-tooltip',
+          }
+        );
+      }
+    });
+    const selectedLayer = layersByCode[code];
+    if (selectedLayer && typeof selectedLayer.bringToFront === 'function') {
+      selectedLayer.bringToFront();
+    }
+    syncTableDistrictSelection(code);
+  }
+
+  selectDistrictOnBoundaryMap = function selectDistrictFromTable(code) {
+    const c = String(code || '').trim().toUpperCase();
+    if (!c || !layersByCode[c]) return;
+
+    applyDistrictHighlight(c);
+
+    const lyr = layersByCode[c];
+    const bb = lyr.getBounds && lyr.getBounds();
+    if (bb && bb.isValid()) {
+      map.fitBounds(bb.pad(0.12));
+    }
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+      if (lyr && typeof lyr.bringToFront === 'function') {
+        lyr.bringToFront();
+      }
+    });
+  };
+
+  resetDistrictBoundaryMap = function () {
+    Object.values(layersByCode).forEach((lyr) => {
+      lyr.unbindTooltip();
+      lyr.setStyle(defaultBoundaryStyle());
+    });
+    syncTableDistrictSelection(null);
+    if (combinedBounds && combinedBounds.isValid()) {
+      map.fitBounds(combinedBounds.pad(0.06));
+    }
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+    });
+  };
+
+  const resetBtn = document.getElementById('districtBoundaryResetBtn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', resetDistrictBoundaryMap);
+  }
+
   if (combinedBounds && combinedBounds.isValid()) {
     map.fitBounds(combinedBounds.pad(0.06));
   }
 }
 
-function renderMap(rows) {
+async function renderMap(rows) {
   const map = L.map('geoMap', {
     scrollWheelZoom: false,
-    zoomControl: true,
+    zoomControl: false,
     attributionControl: true
   }).setView([37.76, -122.42], 12);
 
@@ -427,19 +648,133 @@ function renderMap(rows) {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  const maxCount = Math.max(...rows.map(d => Number(d.stop_count) || 0));
-  const bounds = [];
+  const maxCount = Math.max(...rows.map(d => Number(d.stop_count) || 0), 1);
 
-  // 鼠标移入地图区域后，才允许滚轮缩放
+  const markersByNe = { A: [], B: [], E: [], J: [] };
+  const districtGeomNe = {};
+
+  try {
+    const res = await fetch('data/sfpd_districts.geojson');
+    if (res.ok) {
+      const gj = await res.json();
+      for (const feat of gj.features || []) {
+        const upper = String(feat.properties?.DISTRICT || '').trim().toUpperCase();
+        const code = sfpdDistrictToDatasetCode[upper];
+        if (code && GEO_NE_INTERACTIVE_CODES.has(code)) {
+          districtGeomNe[code] = feat.geometry;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[geo map] NE district polygons for pulse', e);
+  }
+
+  function hitAnyNeDistrict(latlng) {
+    for (const code of GEO_NE_INTERACTIVE_CODES) {
+      const g = districtGeomNe[code];
+      if (g && pointInGeometry(latlng.lat, latlng.lng, g)) return true;
+    }
+    return false;
+  }
+
+  function countNeMarkers() {
+    let n = 0;
+    GEO_NE_INTERACTIVE_CODES.forEach((code) => {
+      n += (markersByNe[code] && markersByNe[code].length) || 0;
+    });
+    return n;
+  }
+
+  const pulseRedRgb = parseRgbCss(GEO_MAP_REF_RED);
+
+  let nePulseRaf = null;
+  let nePulseActive = false;
+  let nePulseStart = 0;
+
+  function restoreAllNeMarkers() {
+    GEO_NE_INTERACTIVE_CODES.forEach((code) => {
+      const list = markersByNe[code];
+      if (!list) return;
+      list.forEach((rec) => {
+        rec.marker.setStyle({
+          radius: rec.baseRadius,
+          color: rec.baseColor,
+          weight: 1,
+          opacity: 0.4,
+          fillColor: rec.baseColor,
+          fillOpacity: rec.baseFillOpacity,
+        });
+      });
+    });
+  }
+
+  function stopNePulse() {
+    if (nePulseRaf != null) {
+      cancelAnimationFrame(nePulseRaf);
+      nePulseRaf = null;
+    }
+    if (nePulseActive) {
+      restoreAllNeMarkers();
+      nePulseActive = false;
+    }
+  }
+
+  function stepNePulse(now) {
+    if (!nePulseActive) return;
+
+    const t = ((now - nePulseStart) % 1000) / 1000;
+    const wave = 0.5 + 0.5 * Math.sin(t * Math.PI * 2);
+
+    GEO_NE_INTERACTIVE_CODES.forEach((code) => {
+      const records = markersByNe[code];
+      if (!records || !records.length) return;
+      records.forEach((rec) => {
+        const blended = lerpRgb(rec.baseRgb, pulseRedRgb, wave);
+        const fillStr = rgbToCss(blended);
+        rec.marker.setStyle({
+          radius: rec.baseRadius,
+          color: fillStr,
+          fillColor: fillStr,
+          weight: 1,
+          opacity: 0.38 + wave * 0.42,
+          fillOpacity: Math.min(0.92, rec.baseFillOpacity + wave * 0.38),
+        });
+      });
+    });
+    nePulseRaf = requestAnimationFrame(stepNePulse);
+  }
+
+  function startNePulse() {
+    if (!countNeMarkers()) return;
+    nePulseActive = true;
+    nePulseStart = performance.now();
+    nePulseRaf = requestAnimationFrame(stepNePulse);
+  }
+
+  function updateNePulse(insideAnyNe) {
+    const want = insideAnyNe && countNeMarkers() > 0;
+    if (want) {
+      if (nePulseActive) return;
+      startNePulse();
+      return;
+    }
+    stopNePulse();
+  }
+
   const mapEl = map.getContainer();
   mapEl.addEventListener('mouseenter', () => {
     map.scrollWheelZoom.enable();
   });
   mapEl.addEventListener('mouseleave', () => {
     map.scrollWheelZoom.disable();
+    updateNePulse(null);
   });
 
-  rows.forEach(d => {
+  map.on('mousemove', (e) => {
+    updateNePulse(hitAnyNeDistrict(e.latlng));
+  });
+
+  rows.forEach((d) => {
     const lat = Number(d.lat);
     const lng = Number(d.lng);
     const count = Number(d.stop_count) || 0;
@@ -447,17 +782,18 @@ function renderMap(rows) {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
     const radius = 2 + Math.sqrt(count / maxCount) * 10;
-   const fillOpacity = getFillOpacity(count, maxCount);
+    const fillOpacity = getFillOpacity(count, maxCount);
     const color = getColor(count, maxCount);
+    const letter = districtLetterFromGeoRow(d.district);
 
     const marker = L.circleMarker([lat, lng], {
-  radius,
-  color: color,
-  weight: 1,
-  opacity: 0.4,
-  fillColor: color,
-  fillOpacity
-});
+      radius,
+      color,
+      weight: 1,
+      opacity: 0.4,
+      fillColor: color,
+      fillOpacity,
+    });
 
     marker.bindPopup(`
       <strong>${d.location || 'Unknown location'}</strong><br>
@@ -467,10 +803,36 @@ function renderMap(rows) {
     `);
 
     marker.addTo(map);
-    bounds.push([lat, lng]);
-  });
 
- 
+    if (GEO_NE_INTERACTIVE_CODES.has(letter)) {
+      markersByNe[letter].push({
+        marker,
+        baseColor: color,
+        baseRgb: parseRgbCss(color),
+        baseFillOpacity: fillOpacity,
+        baseRadius: radius,
+      });
+    }
+  });
+}
+
+function attachDistrictTableRowClicks() {
+  const tbody = document.getElementById('table1-body');
+  if (!tbody) return;
+
+  tbody.addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-district-code]');
+    if (!tr) return;
+    const code = tr.getAttribute('data-district-code');
+    if (!code || !selectDistrictOnBoundaryMap) return;
+
+    selectDistrictOnBoundaryMap(code);
+
+    const mapHost = document.getElementById('districtBoundaryMap');
+    if (mapHost) {
+      mapHost.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
 }
 
 async function loadAll() {
@@ -482,7 +844,8 @@ async function loadAll() {
 
     renderTable(r1.data);
     await renderDistrictBoundaryMap();
-    renderMap(rGeo.data);
+    attachDistrictTableRowClicks();
+    await renderMap(rGeo.data);
   } catch (err) {
     console.error('Failed to load data:', err);
     document.body.insertAdjacentHTML(

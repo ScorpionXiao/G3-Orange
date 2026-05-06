@@ -335,8 +335,15 @@ $sql_t4b = "
     ORDER BY FIELD(age_group, '18-25', '26-40', '41-65', '66+')
 ";
 
-// ── TASK GEO: Raw stop locations with district + time for map/table/charts ─
-// No window functions — compatible with MySQL 5.7
+// ── TASK GEO: Stop locations for geography.html heatmap ───────────────────
+// Must align with map eligibility (SF bbox + district) so dots are comparable
+// to explorer/map.html. Task=1 table counts ALL rows by district (incl. no-GPS);
+// this query only has rows with coordinates, so district TOTALS still differ from
+// the table — but hotspot ranking is no longer biased by the old query:
+//   • Previously: GROUP BY lat,lng,...,date,time + LIMIT 500 → only the 500
+//     largest *datetime* buckets (downtown duplicate timestamps dominated).
+//   • Now: GROUP BY lat,lng,location,district → spatial piles of stops; Ingleside
+//     and other spread-out districts can surface. LIMIT raised for coverage.
 $sql_geo = "
     SELECT
         g.lat,
@@ -353,21 +360,25 @@ $sql_geo = "
             lng,
             location,
             district,
-            date,
-            time,
+            MAX(date) AS date,
+            MAX(time) AS time,
             COUNT(*) AS stop_count
         FROM ca_san_francisco_50k
         WHERE lat IS NOT NULL AND lat != ''
           AND lng IS NOT NULL AND lng != ''
-        GROUP BY lat, lng, location, district, date, time
+          AND district IS NOT NULL AND TRIM(district) != ''
+        " . mapSfBBoxSqlBare() . "
+        GROUP BY lat, lng, location, district
         ORDER BY stop_count DESC
-        LIMIT 500
+        LIMIT 2500
     ) g
     CROSS JOIN (
         SELECT COUNT(*) AS total_count
         FROM ca_san_francisco_50k
         WHERE lat IS NOT NULL AND lat != ''
           AND lng IS NOT NULL AND lng != ''
+          AND district IS NOT NULL AND TRIM(district) != ''
+        " . mapSfBBoxSqlBare() . "
     ) t
 ";
 
