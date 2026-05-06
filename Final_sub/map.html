@@ -208,6 +208,17 @@ const OUTCOME_BADGE = {
   'Release': 'badge-outcome-release',
 };
 
+/** leaflet-heat gradient keys must stay in [0, 1]; shared across all densities. */
+const HEAT_GRADIENT = {
+  0.0: '#fff8f1',
+  0.15: '#fde8d7',
+  0.3: '#f7cfab',
+  0.5: '#D3A77C',
+  0.7: '#eca96d',
+  0.9: '#E58F52',
+  1.0: '#CD713B'
+};
+
 const YEAR_RANGE_MIN = 2007;
 const YEAR_RANGE_MAX = 2016;
 
@@ -447,33 +458,42 @@ function renderHeatmap() {
 
   if (heatLayer) map.removeLayer(heatLayer);
 
-  const wgt = s => {
-    const sh = s.share_of_total;
-    if (sh != null && Number.isFinite(Number(sh))) return Math.min(1, 0.1 + Number(sh) / 90);
-    return 0.26;
-  };
+  const count = filteredStops.length;
+  if (count === 0) {
+    if (typeof L.heatLayer !== 'function') {
+      renderPoints(false);
+      document.getElementById('viewPoints').classList.add('active');
+      document.getElementById('viewHeat').classList.remove('active');
+    }
+    return;
+  }
+
+  let radius, blur, max;
+  if (count > 8000) {
+    radius = 20;
+    blur = 16;
+    max = 1.2;
+  } else if (count > 3000) {
+    radius = 22;
+    blur = 15;
+    max = 1;
+  } else {
+    radius = 25;
+    blur = 17;
+    max = 0.6;
+  }
+
+  const maxCount = Math.max(...filteredStops.map(s => s.count || 1));
+  const wgt = s => (s.count || 1) / maxCount;
   const points = filteredStops.map(s => [s.lat, s.lng, wgt(s)]);
-  const wVals = points.map(p => p[2]);
-  const wMax = wVals.length ? Math.max(...wVals, 1e-6) : 1;
-  // leaflet-heat: gradient keys MUST stay in [0, 1]. Higher `max` = softer map (less clipping to darkest stop).
-  const heatMax = Math.max(0.5, wMax * 1.45);
 
   if (typeof L.heatLayer === 'function') {
     heatLayer = L.heatLayer(points, {
-      radius: 25,
-      blur: 18,
+      radius,
+      blur,
       maxZoom: 17,
-      max: heatMax,
-      gradient: {
-        0.0:  '#fff9f4',
-        0.18: '#fde8dc',
-        0.35: '#f7cfa8',
-        0.52: '#f0b078',
-        0.68: '#e8924a',
-        0.82: '#d97a35',
-        0.92: '#c45f24',
-        1.0:  '#ad503b',
-      },
+      max,
+      gradient: HEAT_GRADIENT,
     }).addTo(map);
   } else {
     // fallback if heat plugin unavailable

@@ -26,7 +26,7 @@
 <section class="hero">
   <div class="hero-left">
     <div class="hero-intro">
-      <div class="eyebrow">San Francisco · Traffic Stop Analysis · 2006-2016</div>
+      <div class="eyebrow">San Francisco · Traffic Stop Analysis · 2007-2016</div>
       <h1>Where do<br>Traffic Stops happen,<br>and what <em>happens next?</em></h1>
       <p class="hero-body">StopAtlas examines how traffic stops vary across locations in USA(taking San Francisco as the first case), asking not only where and why stops occur, but also how enforcement outcomes differ. <br>By connecting location, reason for stop, and post-stop actions, we aim to uncover patterns that suggest differences in policing intensity and decision-making across contexts.</p>
     </div>
@@ -38,16 +38,44 @@
   </div>
 
   <div class="hero-right">
-    <div class="sf-sketch">
-      <img src="frontpage-img4.png" alt="Stop density map">
+    <div class="sf-sketch sf-sketch--video">
+      <div class="hero-video-frame">
+        <video
+          id="heroPreviewVideo"
+          class="hero-preview-video"
+          src="index_1.mp4"
+          autoplay
+          loop
+          playsinline
+          preload="auto"
+        >Your browser does not support the video tag.</video>
+      </div>
     </div>
+    <button
+      type="button"
+      class="hero-video-mute"
+      id="heroVideoMuteBtn"
+      aria-pressed="false"
+      aria-label="Mute video"
+    >
+      <svg class="hero-video-mute__icon hero-video-mute__icon--on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      </svg>
+      <svg class="hero-video-mute__icon hero-video-mute__icon--off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+        <line x1="23" y1="9" x2="17" y2="15"/>
+        <line x1="17" y1="9" x2="23" y2="15"/>
+      </svg>
+    </button>
   </div>
-</section>
 
-<section id="story-entry" class="entry-bridge" aria-label="Continue exploring this story">
-  <div class="entry-bridge-inner">
-    <a href="map.html" class="cta-primary">Explore the Map<span class="cta-primary-arrow" aria-hidden="true">→</span></a>
-    <a href="analysis.html" class="cta-secondary">Explore the Analysis<span class="cta-primary-arrow" aria-hidden="true">→</span></a>
+  <div id="story-entry" class="entry-bridge entry-bridge--hero" aria-label="Continue exploring this story">
+    <div class="entry-bridge-inner">
+      <a href="map.html" class="cta-primary">Explore the Map<span class="cta-primary-arrow" aria-hidden="true">→</span></a>
+      <a href="analysis.html" class="cta-secondary">Explore the Analysis<span class="cta-primary-arrow" aria-hidden="true">→</span></a>
+    </div>
   </div>
 </section>
 
@@ -108,6 +136,72 @@
     </aside>
   </div>
 </footer>
+
+<script>
+(function () {
+  var video = document.getElementById('heroPreviewVideo');
+  var frame = document.querySelector('.hero-video-frame');
+  var btn = document.getElementById('heroVideoMuteBtn');
+  if (!video || !btn || !frame) return;
+
+  /** Cover column: scale up to fill, crop overflow; align to top so title sits under nav (no letterbox bars). */
+  function layoutHeroVideo() {
+    var vw = video.videoWidth;
+    var vh = video.videoHeight;
+    var rw = frame.clientWidth;
+    var rh = frame.clientHeight;
+    if (!vw || !vh || rw < 2 || rh < 2) return;
+    var scale = Math.max(rw / vw, rh / vh);
+    var w = Math.round(vw * scale);
+    var h = Math.round(vh * scale);
+    video.style.width = w + 'px';
+    video.style.height = h + 'px';
+    video.style.left = Math.round((rw - w) / 2) + 'px';
+    video.style.top = '0';
+  }
+
+  video.addEventListener('loadedmetadata', layoutHeroVideo);
+  video.addEventListener('loadeddata', layoutHeroVideo);
+  window.addEventListener('resize', layoutHeroVideo);
+  if (typeof ResizeObserver !== 'undefined') {
+    var ro = new ResizeObserver(function () {
+      layoutHeroVideo();
+    });
+    ro.observe(frame);
+  }
+
+  function syncMuteUi() {
+    var muted = video.muted;
+    btn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+    btn.setAttribute('aria-label', muted ? 'Unmute video' : 'Mute video');
+    btn.classList.toggle('hero-video-mute--muted', muted);
+  }
+
+  video.addEventListener('volumechange', syncMuteUi);
+
+  btn.addEventListener('click', function () {
+    video.muted = !video.muted;
+    if (!video.muted) {
+      video.play().catch(function () {});
+    }
+    syncMuteUi();
+  });
+
+  syncMuteUi();
+
+  video.muted = false;
+  var p = video.play();
+  if (p !== undefined) {
+    p.catch(function () {
+      video.muted = true;
+      syncMuteUi();
+      return video.play();
+    });
+  }
+
+  layoutHeroVideo();
+})();
+</script>
 
 </body>
 </html>
