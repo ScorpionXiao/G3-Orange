@@ -31,7 +31,8 @@
       opacity: 0; pointer-events: none;
       transition: opacity 0.4s ease;
     }
-    #gt-overlay.gt-visible { opacity: 1; pointer-events: all; }
+    /* Keep the visual tour layer without blocking native page hover/click interactions. */
+    #gt-overlay.gt-visible { opacity: 1; pointer-events: none; }
 
     #gt-tooltip {
       position: fixed;
@@ -150,7 +151,6 @@
 
     const overlay = document.createElement('div');
     overlay.id = 'gt-overlay';
-    overlay.onclick = () => GuidedTour.dismiss();
 
     const arrow = document.createElement('div');
     arrow.id = 'gt-arrow';
