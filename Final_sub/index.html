@@ -6,6 +6,7 @@
 <title>StopAtlas — Home</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="stylesheet.css">
+<script src="guided-tour.js"></script>
 </head>
 <body class="home-page">
 
@@ -105,6 +106,16 @@
         <span class="home-analysis-cta__sub">Understand the patterns behind traffic stops</span>
       </a>
     </div>
+    <div class="home-tour-cta">
+      <button onclick="GuidedTour.start()" class="home-tour-cta__btn">
+        <span class="home-tour-cta__icon">🔍</span>
+        <span class="home-tour-cta__text">
+          <span class="home-tour-cta__title">Guided Investigation</span>
+          <span class="home-tour-cta__sub">Let us walk you through the findings</span>
+        </span>
+        <span class="home-tour-cta__arrow">→</span>
+      </button>
+    </div>
   </div>
   <div class="pullout-meta">
     <span class="big-num"></span>
@@ -116,7 +127,7 @@
       <img src="frontpage-img3.png" alt="">
       <div class="hero-stats hero-stats-bottom">
       <div class="h-stat">
-        <div class="h-stat-n">24<span>k</span></div>
+        <div class="h-stat-n">50<span>k</span></div>
         <div class="h-stat-l">Stops<br>analyzed</div>
       </div>
       <div class="h-stat">

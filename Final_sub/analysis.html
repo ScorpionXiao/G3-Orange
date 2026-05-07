@@ -6,6 +6,7 @@
 <title>StopAtlas — Analysis</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="stylesheet.css">
+<script src="guided-tour.js"></script>
 </head>
 <body class="analysis-hub-page">
 
@@ -34,6 +35,11 @@
 <div class="page-header page-header--hub">
   <!-- <div class="page-eyebrow">Data Analysis · ca_san_francisco_50k.csv · 50,000 Records</div> -->
   <h1>Exploring SF Traffic Stops</h1>
+
+  <button onclick="GuidedTour.startFromAnalysis()" class="tour-start-btn">
+    <span>🔍</span> Start Guided Investigation
+  </button>
+
   <p>We analyze the data from the following four perspectives to reach our conclusion.</p>
 </div>
 
@@ -131,6 +137,15 @@
 </div>
 
 <script>
+  // Clear tour if user arrived here normally (not via guided tour button)
+  // The guided tour sets a special flag 'tourEntry' when navigating
+  if (sessionStorage.getItem('guidedTour') === 'true' && 
+    sessionStorage.getItem('tourEntry') !== 'true') {
+    sessionStorage.removeItem('guidedTour');
+    sessionStorage.removeItem('tourStep');
+  }
+    sessionStorage.removeItem('tourEntry');
+
   const accentHex = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
   const colors = { geo: accentHex, time: accentHex, out: accentHex, demo: accentHex };
 
