@@ -128,13 +128,24 @@
       Note: correlation is not causation. Differences in arrest rate may reflect many factors including stop reason distribution, neighborhood, and other variables not fully controlled for here.
     </p>
   </div>
+
+  <div class="analysis-block analysis-cta-block">
+    <a href="map.html" class="analysis-page-cta">
+      <span class="analysis-page-cta__title">Explore the Map</span>
+      <span class="analysis-page-cta__sub">Dive into the data yourself</span>
+    </a>
+  </div>
 </section>
 
 <script>
-const ACCENT_RGB = '207,134,75';
-const SAGE = '#e2b0a0';
-const WARM_GOLD = '#c9a27a';
-const ACCENT_DEEP = '#9a5a2f';
+/** Chart 4a stacked: pale oranges + deep red for thin arrest slivers */
+const ORANGE_SOFT = '#f2e6dc';
+const ORANGE_CITE = '#e8c9ae';
+const RED_ARREST = '#5a1410';
+/** Charts 4b / 4c — prior theme (--accent-warm low, --strong-orange high) */
+const RATE_BAR_LOW = '#e2b48c';
+const RATE_BAR_HIGH = '#a63d0f';
+const RATE_BAR_AGE_DIM = 'rgba(207,134,75,0.42)';
 const MUTED = '#7a746b';
 
 Chart.defaults.font.family = "'DM Sans', sans-serif";
@@ -183,9 +194,17 @@ function renderDemographics(T4a, T4b) {
     data: {
       labels: T4a.map(d => d.race),
       datasets: [
-        {label:'Warning %',  data:T4a.map(d=>+d.warning_pct),  backgroundColor:SAGE, borderRadius:0, borderSkipped:false},
-        {label:'Citation %', data:T4a.map(d=>+d.citation_pct), backgroundColor:'rgba('+ACCENT_RGB+',0.42)', borderRadius:0, borderSkipped:false},
-        {label:'Arrest %',   data:T4a.map(d=>+d.arrest_pct),   backgroundColor:ACCENT_DEEP,  borderRadius:0, borderSkipped:false},
+        {label:'Warning %',  data:T4a.map(d=>+d.warning_pct),  backgroundColor: ORANGE_SOFT, borderRadius:0, borderSkipped:false},
+        {label:'Citation %', data:T4a.map(d=>+d.citation_pct), backgroundColor: ORANGE_CITE, borderRadius:0, borderSkipped:false},
+        {
+          label:'Arrest %',
+          data:T4a.map(d=>+d.arrest_pct),
+          backgroundColor: RED_ARREST,
+          borderColor: 'rgba(255,252,248,0.92)',
+          borderWidth: 1,
+          borderRadius: 0,
+          borderSkipped: false,
+        },
       ]
     },
     options: {
@@ -206,7 +225,7 @@ function renderDemographics(T4a, T4b) {
       datasets: [{
         label: 'Arrest %',
         data: T4a.map(d => +d.arrest_pct),
-        backgroundColor: T4a.map(d => +d.arrest_pct > 2 ? ACCENT_DEEP : WARM_GOLD),
+        backgroundColor: T4a.map(d => +d.arrest_pct > 2 ? RATE_BAR_HIGH : RATE_BAR_LOW),
         borderRadius: 3,
         borderSkipped: false
       }]
@@ -223,7 +242,7 @@ function renderDemographics(T4a, T4b) {
 
   // ── Chart 4c: arrest rate by age group (highlight max rate bar) ───────
   const ageBarColors = T4b.map(d =>
-    +d.arrest_pct === maxAgeArrestPct && maxAgeArrestPct > 0 ? ACCENT_DEEP : SAGE
+    +d.arrest_pct === maxAgeArrestPct && maxAgeArrestPct > 0 ? RATE_BAR_HIGH : RATE_BAR_AGE_DIM
   );
   new Chart(document.getElementById('c4c'), {
     type: 'bar',

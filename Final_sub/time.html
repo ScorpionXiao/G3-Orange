@@ -71,7 +71,7 @@
       </div>
       <div class="analysis-note">
         <h3>Hourly rhythm</h3>
-        <p>Stop counts rise and fall across the day in recognizable windows, with stronger concentrations in late afternoon and evening. That pattern points to daily mobility and enforcement intensity rather than a flat random distribution across hours.</p>
+        <p>Stop counts rise and fall across the day in recognizable windows, <strong>with stronger concentrations in late afternoon and evening</strong>. That pattern points to daily mobility and enforcement intensity rather than a flat random distribution across hours.</p>
       </div>
     </div>
     <div class="analysis-row">
@@ -84,7 +84,7 @@
       </div>
       <div class="analysis-note">
         <h3>Week vs weekend</h3>
-        <p>Weekly totals are uneven: weekday commute and activity rhythms differ from weekend travel. Weekend bars often diverge from midweek levels, which helps explain why “when” matters at both hourly and weekly scales.</p>
+        <p>Traffic stops are <strong>generally higher on weekdays than weekends</strong>, reflecting routine commuting patterns, while variation within the workweek remains <strong>relatively modest</strong> aside from a midweek peak.</p>
       </div>
     </div>
     <div class="analysis-row">
@@ -97,7 +97,7 @@
       </div>
       <div class="analysis-note">
         <h3>Month-to-month view</h3>
-        <p>Monthly bars support broad trend inspection, but seasonal interpretation should stay cautious: the series may reflect uneven or partial coverage rather than a complete year of comparable observations.</p>
+        <p>Monthly variation shows <strong>a mild decline from early to late year</strong>, with relatively stable levels in midyear. However, <strong>no strong seasonal pattern is evident</strong>, and the trend should be interpreted cautiously due to possible uneven data coverage.</p>
       </div>
     </div>
   </div>
@@ -110,6 +110,13 @@
     <p>
       The monthly chart is useful for broad trend inspection, but seasonal interpretation should remain cautious because the available monthly totals may reflect uneven or partial coverage rather than a complete year of comparable observations.
     </p>
+  </div>
+
+  <div class="analysis-block analysis-cta-block">
+    <a href="map.html" class="analysis-page-cta">
+      <span class="analysis-page-cta__title">Explore the Map</span>
+      <span class="analysis-page-cta__sub">Dive into the data yourself</span>
+    </a>
   </div>
 </section>
 
@@ -178,281 +185,62 @@ function renderSection2(T2a, T2b, T2c) {
         backgroundColor: 'rgba('+ACCENT_RGB+',0.1)',
         fill: true,
         tension: 0.4,
-        pointRadius: 3,
-        pointBackgroundColor: ACCENT
+        pointBackgroundColor: ACCENT,
       }]
     },
     options: {
       ...chartBox,
-      plugins: { legend: { display: false } },
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false,
+      },
+      hover: {
+        mode: 'nearest',
+        intersect: false,
+      },
+      elements: {
+        point: {
+          radius: 4,
+          hoverRadius: 11,
+          hoverBorderWidth: 2,
+          hoverBorderColor: '#ffffff',
+          hoverBackgroundColor: ACCENT,
+        },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          displayColors: false,
+          backgroundColor: 'rgba(0, 0, 0, 0.82)',
+          titleColor: '#ffffff',
+          bodyColor: 'rgba(255, 255, 255, 0.92)',
+          borderColor: 'rgba(255, 255, 255, 0.14)',
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 6,
+          titleFont: { size: 13, weight: '600', family: "'IBM Plex Mono', monospace" },
+          bodyFont: { size: 12, family: "'DM Sans', sans-serif" },
+          callbacks: {
+            title: (items) => (items[0] ? items[0].label : ''),
+            label: (item) => {
+              const count = item.parsed.y;
+              const pct =
+                hourTotal > 0 ? ((100 * count) / hourTotal).toFixed(1) : '0.0';
+              return [
+                `Stops: ${Number(count).toLocaleString()}`,
+                `Share: ${pct}% of day total`,
+              ];
+            },
+          },
+        },
+      },
       scales: {
         y: { grid: { color: 'rgba(0,0,0,0.05)' } },
-        x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } }
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } },
       },
-      animation: {
-        onComplete: () => { initCar(c2aCanvas, c2aChart, T2a); }
-      }
-    }
+    },
   });
-
-  function initCar(canvas, chart, data) {
-    const meta = chart.getDatasetMeta(0);
-    const points = meta.data;
-    if (!points || points.length === 0) return;
-
-    const wrapper = canvas.parentElement;
-    wrapper.style.position = 'relative';
-    const overlay = document.createElement('canvas');
-    overlay.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
-    overlay.width = canvas.width;
-    overlay.height = canvas.height;
-    // enable pointer events on overlay for click detection
-    overlay.style.pointerEvents = 'auto';
-    wrapper.appendChild(overlay);
-    const ctx = overlay.getContext('2d');
-
-    // state
-    let progress = 0;       // 0 = left end, 1 = right end
-    let direction = 0;      // 0 = stopped, 1 = right, -1 = left
-    let animFrame = null;
-    let lastTime = null;
-    const duration = 3000;  // ms to travel full length
-
-    function getCarPos(p) {
-      const idx = p * (points.length - 1);
-      const lo = Math.floor(idx);
-      const hi = Math.min(lo + 1, points.length - 1);
-      const t = idx - lo;
-      const x = points[lo].x + (points[hi].x - points[lo].x) * t;
-      const y = points[lo].y + (points[hi].y - points[lo].y) * t;
-      const nearIdx = Math.round(idx);
-
-      // angle from adjacent points for rotation
-      const alo = Math.max(0, lo - 1);
-      const ahi = Math.min(points.length - 1, lo + 1);
-      const dx = points[ahi].x - points[alo].x;
-      const dy = points[ahi].y - points[alo].y;
-      const angle = Math.atan2(dy, dx);
-
-      return { x, y, hour: data[nearIdx].hour, count: +data[nearIdx].stop_count, angle };
-    }
-
-    function drawCar(x, y, hour, count, facing, angle = 0) {
-      ctx.clearRect(0, 0, overlay.width, overlay.height);
-      ctx.save();
-
-      ctx.translate(x, y);
-      // flip horizontally if going left, then rotate to match slope
-      if (facing === -1) {
-        ctx.scale(-1, 1);
-        ctx.rotate(-angle);
-      } else {
-        ctx.rotate(angle);
-      }
-
-      // car body
-      ctx.fillStyle = '#303030';
-      ctx.beginPath();
-      ctx.roundRect(-18, -14, 36, 16, 4);
-      ctx.fill();
-
-      // roof
-      ctx.fillStyle = ACCENT;
-      ctx.beginPath();
-      ctx.roundRect(-11, -22, 22, 10, 3);
-      ctx.fill();
-
-      // wheels
-      [{ wx: -10 }, { wx: 10 }].forEach(({ wx }) => {
-        ctx.fillStyle = '#303030';
-        ctx.beginPath();
-        ctx.arc(wx, 4, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#f5f3ee';
-        ctx.beginPath();
-        ctx.arc(wx, 4, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // headlight
-      ctx.fillStyle = '#FFC300';
-      ctx.beginPath();
-      ctx.arc(18, -7, 3, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.restore();
-
-      // tooltip (always upright)
-      ctx.save();
-      ctx.fillStyle = 'rgba(48,48,48,0.88)';
-      ctx.beginPath();
-      ctx.roundRect(x - 28, y - 48, 56, 22, 4);
-      ctx.fill();
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#f5f3ee';
-      ctx.font = `500 10px 'IBM Plex Mono', monospace`;
-      ctx.fillText(String(hour).padStart(2,'0') + ':00', x, y - 40);
-      ctx.fillStyle = ACCENT;
-      ctx.font = `600 11px 'IBM Plex Mono', monospace`;
-      ctx.fillText(count.toLocaleString(), x, y - 30);
-
-      // click hint when stopped
-      if (direction === 0) {
-        ctx.fillStyle = 'rgba(48,48,48,0.5)';
-        ctx.font = `10px 'DM Sans', sans-serif`;
-        ctx.fillText('click me', x, y + 22);
-      }
-      ctx.restore();
-    }
-
-    function animate(timestamp) {
-      if (!lastTime) lastTime = timestamp;
-      const delta = (timestamp - lastTime) / duration;
-      lastTime = timestamp;
-
-      progress = Math.max(0, Math.min(1, progress + direction * delta));
-
-      const { x, y, hour, count, angle } = getCarPos(progress);
-      drawCar(x, y, hour, count, direction === 0 ? (progress < 0.5 ? 1 : -1) : direction, angle);
-
-      if ((direction === 1 && progress >= 1) || (direction === -1 && progress <= 0)) {
-        direction = 0;
-        lastTime = null;
-        cancelAnimationFrame(animFrame);
-        animFrame = null;
-        return;
-      }
-
-      animFrame = requestAnimationFrame(animate);
-    }
-
-    // initial draw
-    const init = getCarPos(0);
-    drawCar(init.x, init.y, init.hour, init.count, 1, init.angle);
-
-    // click detection on overlay
-    overlay.style.pointerEvents = 'auto';
-    overlay.addEventListener('click', (e) => {
-      const rect = overlay.getBoundingClientRect();
-      const scaleX = overlay.width / rect.width;
-      const scaleY = overlay.height / rect.height;
-      const mx = (e.clientX - rect.left) * scaleX;
-      const my = (e.clientY - rect.top) * scaleY;
-
-      const { x, y } = getCarPos(progress);
-      const dist = Math.sqrt((mx - x) ** 2 + (my - y) ** 2);
-
-      if (dist < 32) {
-        if (direction !== 0) {
-          // stop
-          direction = 0;
-          cancelAnimationFrame(animFrame);
-          animFrame = null;
-          lastTime = null;
-        } else if (progress >= 1) {
-          // at right end → go left
-          direction = -1;
-          lastTime = null;
-          animFrame = requestAnimationFrame(animate);
-        } else {
-          // at left end or anywhere → go right
-          direction = 1;
-          lastTime = null;
-          animFrame = requestAnimationFrame(animate);
-        }
-      }
-    });
-
-    // cursor hint
-    overlay.addEventListener('mousemove', (e) => {
-      const rect = overlay.getBoundingClientRect();
-      const scaleX = overlay.width / rect.width;
-      const scaleY = overlay.height / rect.height;
-      const mx = (e.clientX - rect.left) * scaleX;
-      const my = (e.clientY - rect.top) * scaleY;
-      const { x, y } = getCarPos(progress);
-      const dist = Math.sqrt((mx - x) ** 2 + (my - y) ** 2);
-      overlay.style.cursor = dist < 32 ? 'pointer' : 'default';
-    });
-  }
-
-  function addCarHover(canvas, chartInstance) {
-    const wrapper = canvas.parentElement;
-    wrapper.style.position = 'relative';
-    const overlay = document.createElement('canvas');
-    overlay.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
-    overlay.width = canvas.width;
-    overlay.height = canvas.height;
-    wrapper.appendChild(overlay);
-    const ctx = overlay.getContext('2d');
-
-    function drawCarAt(x, y) {
-      ctx.clearRect(0, 0, overlay.width, overlay.height);
-      ctx.save();
-      ctx.translate(x, y);
-
-      // car body
-      ctx.fillStyle = '#303030';
-      ctx.beginPath();
-      ctx.roundRect(-18, -14, 36, 16, 4);
-      ctx.fill();
-
-      // roof
-      ctx.fillStyle = ACCENT;
-      ctx.beginPath();
-      ctx.roundRect(-11, -22, 22, 10, 3);
-      ctx.fill();
-
-      // wheels
-      [{ wx: -10 }, { wx: 10 }].forEach(({ wx }) => {
-        ctx.fillStyle = '#303030';
-        ctx.beginPath();
-        ctx.arc(wx, 4, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#f5f3ee';
-        ctx.beginPath();
-        ctx.arc(wx, 4, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // headlight
-      ctx.fillStyle = '#FFC300';
-      ctx.beginPath();
-      ctx.arc(18, -7, 3, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.restore();
-    }
-
-    canvas.addEventListener('mousemove', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const mx = (e.clientX - rect.left) * scaleX;
-      const my = (e.clientY - rect.top) * scaleY;
-
-      const elements = chartInstance.getElementsAtEventForMode(
-        e, 'nearest', { intersect: true }, false
-      );
-
-      if (elements.length > 0) {
-        overlay.width = canvas.width;
-        overlay.height = canvas.height;
-        const el = elements[0];
-        const meta = chartInstance.getDatasetMeta(el.datasetIndex);
-        const bar = meta.data[el.index];
-        const barX = bar.x;
-        const barTop = bar.y;
-        drawCarAt(barX, barTop - 8);
-      } else {
-        ctx.clearRect(0, 0, overlay.width, overlay.height);
-      }
-    });
-
-    canvas.addEventListener('mouseleave', () => {
-      ctx.clearRect(0, 0, overlay.width, overlay.height);
-    });
-  }
 
   const c2bChart = new Chart(document.getElementById('c2b'), {
     type: 'bar',
@@ -464,7 +252,6 @@ function renderSection2(T2a, T2b, T2c) {
     },
     options: { ...chartBox, plugins:{legend:{display:false}}, scales:{y:{grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false}}} }
   });
-  addCarHover(document.getElementById('c2b'), c2bChart);
 
   const c2cChart = new Chart(document.getElementById('c2c'), {
     type: 'bar',
@@ -474,7 +261,6 @@ function renderSection2(T2a, T2b, T2c) {
     },
     options: { ...chartBox, plugins:{legend:{display:false}}, scales:{y:{grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false}}} }
   });
-  addCarHover(document.getElementById('c2c'), c2cChart);
 }
 
 

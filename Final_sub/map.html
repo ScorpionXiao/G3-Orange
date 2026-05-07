@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>StopAtlas — Map</title>
 
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
 
 <link rel="stylesheet" href="stylesheet.css">
 </head>
@@ -113,6 +115,15 @@
         Try switching to <strong>Heatmap</strong> or use the search bar above the map — filter by reason, outcome, or district as you type.
       </div>
 
+      <div class="filter-section map-export-section">
+        <p class="filter-label">Save map</p>
+        <p class="filter-hint">One <strong>.zip</strong> file: map image (PNG or JPG) + readme.txt (filters &amp; counts). Avoids multiple downloads being blocked.</p>
+        <div class="map-export-btns">
+          <button type="button" class="export-format-btn" id="exportMapPng">PNG in ZIP</button>
+          <button type="button" class="export-format-btn" id="exportMapJpg">JPG in ZIP</button>
+        </div>
+      </div>
+
     </div>
 
     <!-- Footer stats -->
@@ -159,6 +170,7 @@
       <strong>Explore tip</strong>
       Hover any point for details. Use the search bar above or filters on the left.
     </div>
+    <a href="resources.html" class="map-data-sources-btn">Data &amp; Sources</a>
   </div>
   </div>
 
@@ -493,6 +505,7 @@ const map = L.map('map', {
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors',
   maxZoom: 19,
+  crossOrigin: true,
 }).addTo(map);
 
 /* ═══════════════════════════════════════════
@@ -1144,6 +1157,200 @@ function updateHints() {
 }
 
 /* ═══════════════════════════════════════════
+   Export map + readme (filters / counts)
+═══════════════════════════════════════════ */
+function exportFileStamp() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+function formatTimeRangeForExport() {
+  if (state.timeMin === 0 && state.timeMax === 23) return 'All hours (0–23)';
+  return `Hours ${state.timeMin}:00–${state.timeMax}:59`;
+}
+
+function buildExportReadme(imageExt, base) {
+  const lines = [];
+  lines.push('StopAtlas — San Francisco map export');
+  lines.push('Generated (local time): ' + new Date().toString());
+  lines.push('Page URL: ' + window.location.href);
+  lines.push('');
+  lines.push('── Active filters (client-side, unless noted) ──');
+  lines.push('Visualization: ' + (state.view === 'heatmap' ? 'Heatmap' : 'Scatter (points)'));
+  lines.push(
+    'Stop reason(s): ' +
+      (state.reasons.size ? [...state.reasons].sort().join('; ') : 'All (none selected)')
+  );
+  lines.push(
+    'Outcome(s): ' + (state.outcomes.size ? [...state.outcomes].sort().join('; ') : 'All (none selected)')
+  );
+  lines.push(
+    'District: ' +
+      (state.districtCode
+        ? `${state.districtCode} (${DISTRICT_LABEL[state.districtCode] || 'SFPD'})`
+        : 'All districts')
+  );
+  lines.push('Year (reloads sample from API): ' + (state.mapYear != null ? String(state.mapYear) : 'All years'));
+  lines.push('Time of day: ' + formatTimeRangeForExport());
+  const searchEl = document.getElementById('searchInput');
+  const q = searchEl && searchEl.value ? searchEl.value.trim() : '';
+  if (q) lines.push('Search box (navigation / chip assist only; not a map filter): ' + q);
+  const strideQ = new URLSearchParams(window.location.search).get('stride');
+  if (strideQ) lines.push('URL ?stride= parameter: ' + strideQ);
+  lines.push('');
+  lines.push('── Counts for this export ──');
+  lines.push('Points shown on map (after filters): ' + filteredStops.length.toLocaleString());
+  lines.push('Points in loaded sample (before client filters): ' + allStops.length.toLocaleString());
+  lines.push('Districts represented in filtered set: ' + new Set(filteredStops.map(s => s.district)).size);
+  if (mapMeta) {
+    lines.push('');
+    lines.push('── API / sampling metadata (this load) ──');
+    if (mapMeta.stride != null) lines.push('Stride: ' + mapMeta.stride);
+    if (mapMeta.year_filter != null) lines.push('Server year filter: ' + mapMeta.year_filter);
+    if (mapMeta.row_count != null) lines.push('Rows in API response: ' + mapMeta.row_count);
+    if (mapMeta.total_eligible != null) {
+      lines.push('Total eligible in DB (SF bbox + GPS + district, before sample): ' + Number(mapMeta.total_eligible).toLocaleString());
+    }
+    if (mapMeta.approx_expected_rows != null) {
+      lines.push('Approx. expected sample rows: ' + mapMeta.approx_expected_rows);
+    }
+    if (mapMeta.sampling) lines.push('Sampling method: ' + mapMeta.sampling);
+    if (mapMeta.sampling_detail) lines.push('Sampling detail: ' + mapMeta.sampling_detail);
+    if (mapMeta.eligible_denominator_note) lines.push('Note: ' + mapMeta.eligible_denominator_note);
+    if (mapMeta.sampling_fallback_error) lines.push('Fallback warning: ' + mapMeta.sampling_fallback_error);
+  }
+  lines.push('');
+  lines.push('── Archive contents ──');
+  lines.push(`ZIP: ${base}.zip`);
+  lines.push(`  • ${base}.${imageExt} — map screenshot (export uses one raster pass; basemap styling should match when tile CORS + browser allow CSS filter on images)`);
+  lines.push(`  • ${base}-readme.txt — this file`);
+  lines.push('');
+  lines.push('Map tiles © OpenStreetMap contributors (https://www.openstreetmap.org/copyright).');
+  lines.push('StopAtlas traffic-stop data per project / Resources page.');
+  return lines.join('\r\n');
+}
+
+function triggerDownloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 120000);
+}
+
+function getMapTileFilterCss() {
+  const v = getComputedStyle(document.documentElement).getPropertyValue('--map-tile-filter').trim();
+  return v || 'grayscale(85%) brightness(1.05) contrast(0.9) sepia(12%)';
+}
+
+/**
+ * Single full-map capture. A previous two-pass (tiles + overlay) approach produced solid blank
+ * images: html2canvas often emits a fully opaque “overlay” layer that covers the basemap.
+ * We rely on one pass + onclone filter on tile <img>s (with CORS tiles) to approximate on-screen colors.
+ */
+async function captureMapForExport(mapEl) {
+  const scale = Math.min(2, window.devicePixelRatio || 1);
+  const bgPaper = getComputedStyle(document.body).backgroundColor || '#fbf3e8';
+  const ft = getMapTileFilterCss();
+
+  return html2canvas(mapEl, {
+    useCORS: true,
+    allowTaint: false,
+    backgroundColor: bgPaper,
+    scale,
+    logging: false,
+    foreignObjectRendering: false,
+    onclone(clonedDoc) {
+      clonedDoc.querySelectorAll('img.leaflet-tile').forEach(img => {
+        img.style.filter = ft;
+        img.style.setProperty('-webkit-filter', ft);
+      });
+    },
+  });
+}
+
+async function runMapExport(mime, ext) {
+  if (typeof html2canvas !== 'function') {
+    alert('Export is unavailable: html2canvas failed to load. Check your network or try again.');
+    return;
+  }
+  if (typeof JSZip !== 'function') {
+    alert('Export is unavailable: JSZip failed to load. Check your network or try again.');
+    return;
+  }
+  const pngBtn = document.getElementById('exportMapPng');
+  const jpgBtn = document.getElementById('exportMapJpg');
+  const busy = el => {
+    if (!el) return;
+    el.disabled = true;
+    el.dataset.prevLabel = el.textContent;
+    el.textContent = '…';
+  };
+  const idle = el => {
+    if (!el) return;
+    el.disabled = false;
+    if (el.dataset.prevLabel) el.textContent = el.dataset.prevLabel;
+  };
+  if (ext === 'png') busy(pngBtn);
+  else busy(jpgBtn);
+
+  const mapEl = map.getContainer();
+  const toHide = [
+    document.getElementById('mapLoading'),
+    document.getElementById('exploreHint'),
+    mapEl.querySelector('.map-data-sources-btn'),
+  ].filter(Boolean);
+  const restore = toHide.map(el => {
+    const prev = el.style.visibility;
+    el.style.visibility = 'hidden';
+    return () => {
+      el.style.visibility = prev;
+    };
+  });
+
+  try {
+    map.invalidateSize();
+    await new Promise(r => setTimeout(r, 450));
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const canvas = await captureMapForExport(mapEl);
+
+    const base = 'stopatlas-sf-map-' + exportFileStamp();
+    const readme = buildExportReadme(ext, base);
+
+    const imgBlob = await new Promise((resolve, reject) => {
+      const q = ext === 'jpg' ? 0.92 : undefined;
+      canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Could not encode image'))), mime, q);
+    });
+
+    const zip = new JSZip();
+    zip.file(base + '.' + ext, imgBlob);
+    zip.file(base + '-readme.txt', readme);
+    const zipBlob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 },
+    });
+
+    triggerDownloadBlob(zipBlob, base + '.zip');
+  } catch (e) {
+    console.error(e);
+    alert(
+      'Could not capture the map. Wait for tiles to finish loading, then try again. If it keeps failing, open the console for details (some browsers block canvas export from map tiles).'
+    );
+  } finally {
+    restore.forEach(fn => fn());
+    idle(pngBtn);
+    idle(jpgBtn);
+  }
+}
+
+/* ═══════════════════════════════════════════
    Boot
 ═══════════════════════════════════════════ */
 updateTimeDisplay();
@@ -1201,6 +1408,9 @@ updateTimeDisplay();
     setTimeout(() => hint.classList.add('hidden'), 7000);
   }
 })();
+
+document.getElementById('exportMapPng')?.addEventListener('click', () => runMapExport('image/png', 'png'));
+document.getElementById('exportMapJpg')?.addEventListener('click', () => runMapExport('image/jpeg', 'jpg'));
 </script>
 </body>
 </html>

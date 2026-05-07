@@ -68,12 +68,13 @@
           <div class="chart-title">Arrest risk by stop reason</div>
           <div class="chart-label">Chart 1 of 2</div>
         </div>
-        <p class="chart-subline">Each bubble: x = arrest rate (%), y = search rate (%), size ∝ total stops.</p>
+        <p class="chart-subline">Each bubble: x = arrest rate (%), y = search rate (%), vertical axis 30–100%. Uniform size; deeper orange = more total stops for that reason. Click a reason below to show only that bubble; click it again to show all.</p>
         <div class="chart-wrap"><canvas id="c3a"></canvas></div>
+        <div id="c3a-legend" class="c3a-bubble-legend" role="toolbar" aria-label="Filter chart by stop reason"></div>
       </div>
       <div class="analysis-note">
         <h3>Risk landscape</h3>
-        <p>Each bubble encodes one stop reason. Horizontal position shows arrest share, vertical position shows how often officers search, and area reflects how common that reason is citywide—making high-arrest, high-search pockets easy to spot.</p>
+        <p>Each bubble encodes one stop reason. Horizontal position shows arrest share and vertical position shows how often officers search (axis trimmed to 30–100% to separate the main cluster). Bubble size is fixed; richer orange indicates a larger volume of stops for that reason citywide.</p>
       </div>
     </div>
     <div class="analysis-row">
@@ -82,11 +83,11 @@
           <div class="chart-title">Search contraband hit rate by reason</div>
           <div class="chart-label">Chart 2 of 2</div>
         </div>
-        <div class="chart-wrap chart-wrap--scroll"><div id="c3b-custom"></div></div>
+        <div class="chart-wrap chart-wrap--c3b"><div id="c3b-custom"></div></div>
       </div>
       <div class="analysis-note">
         <h3>Hit rates</h3>
-        <p>Hit rate measures whether a search finds contraband. Large gaps across reasons raise questions about whether searches are applied consistently for comparable stops.</p>
+        <p>Hit rate measures <strong>whether a search finds contraband</strong>. Hit rates vary sharply by stop reason: targeted stops such as warrants are highly effective, while routine traffic-related stops rarely yield contraband.</p>
       </div>
     </div>
   </div>
@@ -96,10 +97,104 @@
       Post-stop outcomes are not evenly distributed. The data suggests that both the reason for the stop and the characteristics of the stopped population are associated with different enforcement results, making outcome analysis central to the larger StopAtlas story.
     </p>
   </div>
+
+  <div class="analysis-block analysis-cta-block">
+    <a href="map.html" class="analysis-page-cta">
+      <span class="analysis-page-cta__title">Explore the Map</span>
+      <span class="analysis-page-cta__sub">Dive into the data yourself</span>
+    </a>
+  </div>
 </section>
 
 <script>
 const MUTED = '#7a746b';
+
+let c3bHitTooltipEl = null;
+
+function ensureC3bHitTooltip() {
+  if (c3bHitTooltipEl) return c3bHitTooltipEl;
+  const el = document.createElement('div');
+  el.id = 'c3b-hit-tooltip';
+  el.className = 'c3b-hit-tooltip';
+  el.setAttribute('role', 'tooltip');
+  el.setAttribute('aria-hidden', 'true');
+  el.innerHTML =
+    '<div class="c3b-hit-tooltip__title"></div><div class="c3b-hit-tooltip__body"></div>';
+  document.body.appendChild(el);
+  c3bHitTooltipEl = el;
+  return el;
+}
+
+function hideC3bHitTooltip() {
+  if (!c3bHitTooltipEl) return;
+  c3bHitTooltipEl.style.display = 'none';
+  c3bHitTooltipEl.hidden = true;
+  c3bHitTooltipEl.setAttribute('aria-hidden', 'true');
+}
+
+function positionC3bHitTooltip(ev) {
+  const tip = c3bHitTooltipEl;
+  if (!tip || tip.style.display === 'none') return;
+  const pad = 14;
+  let x = ev.clientX + pad;
+  let y = ev.clientY + pad;
+  const tw = tip.offsetWidth;
+  const th = tip.offsetHeight;
+  if (x + tw > window.innerWidth - 10) x = Math.max(10, ev.clientX - tw - pad);
+  if (y + th > window.innerHeight - 10) y = Math.max(10, ev.clientY - th - pad);
+  tip.style.left = `${x}px`;
+  tip.style.top = `${y}px`;
+}
+
+function clearC3bHoverState(container) {
+  container.classList.remove('c3b-hit-stack--hovering');
+  container.querySelectorAll('.c3b-hit-row').forEach((row) => {
+    row.classList.remove('c3b-hit-row--active', 'c3b-hit-row--above', 'c3b-hit-row--below');
+  });
+}
+
+function applyC3bHoverState(container, activeRow) {
+  const rows = [...container.querySelectorAll('.c3b-hit-row')];
+  const idx = rows.indexOf(activeRow);
+  if (idx === -1) return;
+  rows.forEach((row, j) => {
+    row.classList.remove('c3b-hit-row--active', 'c3b-hit-row--above', 'c3b-hit-row--below');
+    if (j === idx) row.classList.add('c3b-hit-row--active');
+    else if (j < idx) row.classList.add('c3b-hit-row--above');
+    else row.classList.add('c3b-hit-row--below');
+  });
+  container.classList.add('c3b-hit-stack--hovering');
+}
+
+function showC3bHitTooltip(ev, d) {
+  const tip = ensureC3bHitTooltip();
+  tip.querySelector('.c3b-hit-tooltip__title').textContent = d.reason;
+  const bodyEl = tip.querySelector('.c3b-hit-tooltip__body');
+  const searches = +d.searches || 0;
+  const hits = +d.contraband_hits || 0;
+  let hitRateStr;
+  if (searches === 0) hitRateStr = '—';
+  else {
+    const hr = d.hit_rate_pct;
+    hitRateStr =
+      hr != null && hr !== '' && !Number.isNaN(+hr) ? `${Number(hr)}%` : '—';
+  }
+  bodyEl.replaceChildren();
+  [
+    ['Searches', searches.toLocaleString()],
+    ['Hits', hits.toLocaleString()],
+    ['Hit rate', hitRateStr],
+  ].forEach(([label, val]) => {
+    const line = document.createElement('div');
+    line.className = 'c3b-hit-tooltip__line';
+    line.textContent = `${label}: ${val}`;
+    bodyEl.appendChild(line);
+  });
+  tip.hidden = false;
+  tip.style.display = 'block';
+  tip.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(() => positionC3bHitTooltip(ev));
+}
 
 Chart.defaults.font.family = "'DM Sans', sans-serif";
 Chart.defaults.font.size   = 12;
@@ -147,81 +242,246 @@ function renderSection3(T3) {
     return BUBBLE_COLOR_PAIRS[idx];
   }
 
-  const maxTotal = Math.max(...T3.map(d => +d.total));
-  const bubbleDatasets = T3.map((d) => {
-    const { fill, border } = colorsForReason(d.reason);
+  function searchRatePct(d) {
+    const tot = +d.total;
+    if (!tot) return 0;
+    return +(100 * d.searches / tot).toFixed(1);
+  }
+
+  /** Omit (0%, 0%) — no signal on this chart and it anchors the scale awkwardly. */
+  const T3bubble = T3.filter(d => {
+    if (+d.total <= 0) return false;
+    const sr = searchRatePct(d);
+    return !(+d.arrest_pct === 0 && sr === 0);
+  });
+
+  const totals = T3bubble.map(d => +d.total);
+  const minTotalStops = Math.min(...totals);
+  const maxTotalStops = Math.max(...totals);
+
+  /**
+   * Deeper orange = higher total stops (fixed bubble radius).
+   * Log-spaced mapping pulls apart similar low counts; floor saturation/lightness so pale end stays distinguishable.
+   */
+  function orangeShadeForVolume(total, minT, maxT) {
+    const span = maxT - minT;
+    let t;
+    if (!span || span <= 0) {
+      t = 0.5;
+    } else {
+      const lo = Math.log1p(0);
+      const hi = Math.log1p(span);
+      t = hi > lo
+        ? Math.min(1, Math.max(0, (Math.log1p(Math.max(0, +total - minT)) - lo) / (hi - lo)))
+        : 0;
+    }
+    const h = 27;
+    const s = 48 + t * 46;
+    const l = 74 - t * 34;
+    const borderL = Math.max(24, l - 12 - t * 14);
+    const borderS = Math.min(96, s + 8);
+    return {
+      fill: `hsla(${h}, ${s}%, ${l}%, 0.92)`,
+      border: `hsl(${h}, ${borderS}%, ${borderL}%)`,
+    };
+  }
+
+  const BUBBLE_RADIUS = 12;
+
+  const bubbleDatasets = T3bubble.map((d) => {
+    const { fill, border } = orangeShadeForVolume(+d.total, minTotalStops, maxTotalStops);
     return {
       label: d.reason,
       data: [{
         x: +d.arrest_pct,
-        y: +(100 * d.searches / d.total).toFixed(1),
-        r: Math.max(6, Math.round(28 * Math.sqrt(+d.total / maxTotal)))
+        y: searchRatePct(d),
+        r: BUBBLE_RADIUS,
       }],
-      backgroundColor: fill + 'cc',
+      backgroundColor: fill,
       borderColor: border,
-      borderWidth: 1.5
+      borderWidth: 1.5,
     };
   });
 
-  new Chart(document.getElementById('c3a'), {
+  let c3aChart = null;
+  let c3aSelectedIndex = null;
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function setC3aReasonFilter(indexOrNull) {
+    if (!c3aChart) return;
+    c3aSelectedIndex = indexOrNull;
+    T3bubble.forEach((_, i) => {
+      c3aChart.setDatasetVisibility(i, indexOrNull === null || i === indexOrNull);
+    });
+    c3aChart.update();
+    syncC3aLegendButtons();
+  }
+
+  function syncC3aLegendButtons() {
+    const root = document.getElementById('c3a-legend');
+    if (!root) return;
+    root.querySelectorAll('.c3a-bubble-legend__btn').forEach((btn, i) => {
+      const isSel = c3aSelectedIndex === i;
+      const dimmed = c3aSelectedIndex !== null && !isSel;
+      btn.classList.toggle('is-active', isSel);
+      btn.classList.toggle('is-dimmed', dimmed);
+      btn.setAttribute('aria-pressed', isSel ? 'true' : 'false');
+    });
+  }
+
+  function buildC3aLegend() {
+    const root = document.getElementById('c3a-legend');
+    if (!root) return;
+    root.innerHTML = '';
+    T3bubble.forEach((row, i) => {
+      const ds = bubbleDatasets[i];
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'c3a-bubble-legend__btn';
+      btn.setAttribute('aria-pressed', 'false');
+      btn.innerHTML =
+        `<span class="c3a-bubble-legend__swatch" style="background:${ds.backgroundColor};border-color:${ds.borderColor}"></span>` +
+        `<span class="c3a-bubble-legend__label">${escapeHtml(row.reason)}</span>`;
+      btn.addEventListener('click', () => {
+        if (c3aSelectedIndex === i) setC3aReasonFilter(null);
+        else setC3aReasonFilter(i);
+      });
+      root.appendChild(btn);
+    });
+  }
+
+  c3aChart = new Chart(document.getElementById('c3a'), {
     type: 'bubble',
     data: { datasets: bubbleDatasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: {
+        padding: { top: 8, right: 14 },
+      },
       plugins: {
-        legend: { position:'bottom', labels:{ boxWidth:10, font:{size:10} } },
+        legend: { display: false },
         tooltip: {
           callbacks: {
+            title: items => (items[0] ? items[0].dataset.label : ''),
             label: ctx => {
-              const d = ctx.raw;
-              return `${ctx.dataset.label} — Arrest: ${d.x}%, Search rate: ${d.y}%`;
-            }
-          }
-        }
+              const pt = ctx.raw;
+              const row = T3bubble.find(r => r.reason === ctx.dataset.label);
+              const totalStr = row ? (+row.total).toLocaleString() : '';
+              const lines = [
+                `Arrest rate: ${pt.x}% · Search rate: ${pt.y}%`,
+              ];
+              if (totalStr) lines.push(`Total stops: ${totalStr} (darker orange = more)`);
+              return lines;
+            },
+          },
+        },
       },
       scales: {
         x: {
           title: { display:true, text:'Arrest Rate (%)', font:{size:11}, color:MUTED },
-          ticks: { callback: v => v+'%' },
-          grid: { color:'rgba(0,0,0,0.05)' }
+          ticks: {
+            callback: (v) => `${Number(v).toFixed(2)}%`,
+          },
+          grid: { color:'rgba(0,0,0,0.05)' },
         },
         y: {
+          min: 30,
+          max: 103,
           title: { display:true, text:'Search Rate (%)', font:{size:11}, color:MUTED },
-          ticks: { callback: v => v+'%' },
-          grid: { color:'rgba(0,0,0,0.05)' }
-        }
-      }
+          ticks: {
+            callback: (v) => {
+              const n = Number(v);
+              if (n > 100) return '';
+              return `${n}%`;
+            },
+          },
+          grid: { color:'rgba(0,0,0,0.05)' },
+        },
+      },
     }
   });
+
+  buildC3aLegend();
 
   const maxHit = Math.max(...T3.map(d => +d.hit_rate_pct));
   const sorted = [...T3].sort((a,b) => +b.hit_rate_pct - +a.hit_rate_pct);
   const container = document.getElementById('c3b-custom');
-  container.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:4px 0;';
+  container.innerHTML = '';
+  container.className = 'c3b-hit-stack';
+
+  if (!container.dataset.c3bTipScrollBound) {
+    container.dataset.c3bTipScrollBound = '1';
+    container.addEventListener(
+      'scroll',
+      () => {
+        hideC3bHitTooltip();
+        clearC3bHoverState(container);
+      },
+      { passive: true },
+    );
+  }
+
+  if (!container.dataset.c3bHoverLeaveBound) {
+    container.dataset.c3bHoverLeaveBound = '1';
+    container.addEventListener('pointerleave', (e) => {
+      const next = e.relatedTarget;
+      if (next && (next === container || container.contains(next))) return;
+      clearC3bHoverState(container);
+    });
+  }
 
   sorted.forEach((d, i) => {
     const pct = +d.hit_rate_pct;
     const isTop = pct === maxHit;
     const isHigh = i < 3;
     const isEmpty = pct === 0;
-    const barW = isEmpty ? 0 : Math.max(4, Math.round(100 * pct / maxHit));
+    const BAR_FILL_CAP = 0.86;
+    const barW =
+      isEmpty ? 0 : Math.max(3, Math.round(BAR_FILL_CAP * 100 * (pct / maxHit)));
     const pair = colorsForReason(d.reason);
     const barColor = isEmpty ? '#e2d6c6' : pair.fill;
     const icon = isTop ? '⚠️' : isHigh ? '●' : '';
     const labelColor = isEmpty ? 'var(--ink-light)' : 'var(--ink)';
     const pctColor = isEmpty ? MUTED : isTop ? pair.border : MUTED;
 
-    container.innerHTML += `
-      <div style="display:flex;flex-direction:column;gap:3px;">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:11px;color:${labelColor};min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${d.reason}">${icon} ${d.reason}</span>
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:${pctColor};font-weight:${isTop?'600':'400'}">${isEmpty ? '—' : pct+'%'}</span>
-        </div>
-        <div style="height:8px;background:var(--rule);border-radius:4px;overflow:hidden;">
-          <div style="height:100%;width:${barW}%;background:${barColor};border-radius:4px;transition:width 0.4s ease;"></div>
-        </div>
-      </div>`;
+    const wrap = document.createElement('div');
+    wrap.className = 'c3b-hit-row';
+
+    const rowTop = document.createElement('div');
+    rowTop.style.cssText = 'display:flex;align-items:center;gap:6px;';
+
+    const labelSpan = document.createElement('span');
+    labelSpan.style.cssText = `font-size:11px;color:${labelColor};min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
+    labelSpan.title = d.reason;
+    labelSpan.textContent = `${icon} ${d.reason}`;
+
+    const pctSpan = document.createElement('span');
+    pctSpan.style.cssText = `font-family:'IBM Plex Mono',monospace;font-size:11px;color:${pctColor};font-weight:${isTop ? '600' : '400'}`;
+    pctSpan.textContent = isEmpty ? '—' : `${pct}%`;
+
+    rowTop.append(labelSpan, pctSpan);
+
+    const barTrack = document.createElement('div');
+    barTrack.style.cssText = 'height:8px;background:var(--rule);border-radius:4px;overflow:hidden;';
+    const barFill = document.createElement('div');
+    barFill.style.cssText = `height:100%;width:${barW}%;background:${barColor};border-radius:4px;transition:width 0.4s ease;`;
+    barTrack.appendChild(barFill);
+    wrap.append(rowTop, barTrack);
+
+    wrap.addEventListener('pointerenter', (e) => {
+      applyC3bHoverState(container, wrap);
+      showC3bHitTooltip(e, d);
+    });
+    wrap.addEventListener('pointermove', positionC3bHitTooltip);
+    wrap.addEventListener('pointerleave', hideC3bHitTooltip);
+
+    container.appendChild(wrap);
   });
 }
 

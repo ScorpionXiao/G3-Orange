@@ -27,11 +27,16 @@
   <div class="hero-left">
     <div class="hero-intro">
       <div class="eyebrow">San Francisco · Traffic Stop Analysis · 2007-2016</div>
-      <h1>Where do<br>Traffic Stops happen,<br>and what <em>happens next?</em></h1>
+      
+      <p class="hero-tagline">
+        <span class="hero-tagline__line hero-tagline__line--lg">A Closer Look</span>
+        <span class="hero-tagline__line hero-tagline__line--lg">at how traffic stops are</span>
+        <span class="hero-tagline__line hero-tagline__line--sm">distributed and decided</span>
+      </p>
       <p class="hero-body">StopAtlas examines how traffic stops vary across locations in USA(taking San Francisco as the first case), asking not only where and why stops occur, but also how enforcement outcomes differ. <br>By connecting location, reason for stop, and post-stop actions, we aim to uncover patterns that suggest differences in policing intensity and decision-making across contexts.</p>
     </div>
     <div class="hero-scroll-hint">
-      <a href="#story-entry" class="hero-scroll-link read-on">
+      <a href="#home-questions" class="hero-scroll-link read-on">
         <span class="hero-scroll-label">Read on</span>
       </a>
     </div>
@@ -70,30 +75,42 @@
       </svg>
     </button>
   </div>
+</section>
 
-  <div id="story-entry" class="entry-bridge entry-bridge--hero" aria-label="Continue exploring this story">
-    <div class="entry-bridge-inner">
-      <a href="map.html" class="cta-primary">Explore the Map<span class="cta-primary-arrow" aria-hidden="true">→</span></a>
-      <a href="analysis.html" class="cta-secondary">Explore the Analysis<span class="cta-primary-arrow" aria-hidden="true">→</span></a>
-    </div>
+<!-- Preview questions (Read on scroll target) -->
+<section class="home-questions" id="home-questions" aria-label="Questions you can explore on StopAtlas">
+<script>document.getElementById('home-questions').classList.add('home-questions--anim-ready');</script>
+  <div class="home-questions__inner">
+    <p class="home-questions__line home-questions__line--from-left home-questions__line--q1">&ldquo;Where are traffic stops concentrated?&rdquo;</p>
+    <p class="home-questions__line home-questions__line--from-right home-questions__line--q2">&ldquo;What is the main reason for stop in XXX?&rdquo;</p>
+    <p class="home-questions__line home-questions__line--from-left home-questions__line--q3">&ldquo;Is time an important factor?&rdquo;</p>
+    <div class="home-questions__spacer" aria-hidden="true"></div>
+    <p class="home-questions__answer">You can find them on StopAtlas.</p>
   </div>
 </section>
 
-<!-- Pull quote -->
+<!-- Pull quote + brand + Analysis CTA -->
 <div class="pullout">
-  <div class="pullout-text">
-    Few tools connect <em>spatial patterns, stop reasons, and enforcement outcomes</em> in a single, integrated view.
+  <div id="home-analysis-cta" class="pullout-main">
+    <p class="pullout-text">
+      Few tools connect <em>spatial patterns, stop reasons, and enforcement outcomes</em> in a single, integrated view.
+    </p>
+    <div class="pullout-brand">
+      <img src="dark_logo_lower1.png" alt="StopAtlas logo">
+      <span>does.</span>
+    </div>
+    <div class="home-analysis-cta">
+      <a href="analysis.html" class="home-analysis-cta__link">
+        <span class="home-analysis-cta__title">See the Analysis</span>
+        <span class="home-analysis-cta__sub">Understand the patterns behind traffic stops</span>
+      </a>
+    </div>
   </div>
-  <div class="pullout-brand">
-  <img src="dark_logo_lower.png" alt="StopAtlas logo">
-  <span>does.</span>
-</div>
   <div class="pullout-meta">
     <span class="big-num"></span>
     <div class="label">SFPD<br>Stop Data<br>Dataset</div>
   </div>
 </div>
-
 
 <div class="sf-bg">
       <img src="frontpage-img3.png" alt="">
@@ -144,7 +161,7 @@
   var btn = document.getElementById('heroVideoMuteBtn');
   if (!video || !btn || !frame) return;
 
-  /** True only after user clicks the mute control to silence audio; blocks scroll-based auto-unmute. */
+  /** True after user clicks mute; scroll pause/play does not change this or video.muted. */
   var userChoseMute = false;
 
   /** Cover column: scale up to fill, crop overflow; align to top so title sits under nav (no letterbox bars). */
@@ -155,8 +172,10 @@
     var rh = frame.clientHeight;
     if (!vw || !vh || rw < 2 || rh < 2) return;
     var scale = Math.max(rw / vw, rh / vh);
-    var w = Math.round(vw * scale);
-    var h = Math.round(vh * scale);
+    var w = Math.ceil(vw * scale);
+    var h = Math.ceil(vh * scale);
+    if (w < rw) w = rw;
+    if (h < rh) h = rh;
     video.style.width = w + 'px';
     video.style.height = h + 'px';
     video.style.left = Math.round((rw - w) / 2) + 'px';
@@ -191,6 +210,35 @@
     syncMuteUi();
   });
 
+  video.playsInline = true;
+  video.defaultMuted = false;
+  video.volume = 1;
+
+  /** Prefer autoplay with sound; if the browser blocks it, fall back to muted playback so the clip still runs. */
+  function tryPlayHero() {
+    if (userChoseMute) {
+      video.muted = true;
+    } else {
+      video.muted = false;
+    }
+    return video.play().catch(function () {
+      if (!userChoseMute) {
+        video.muted = true;
+        syncMuteUi();
+        return video.play().catch(function () {});
+      }
+    });
+  }
+
+  syncMuteUi();
+  tryPlayHero();
+
+  function retryPlayOnce() {
+    if (video.readyState >= 2) tryPlayHero();
+  }
+  video.addEventListener('loadeddata', retryPlayOnce, { once: true });
+  video.addEventListener('canplay', retryPlayOnce, { once: true });
+
   var videoColumn = document.querySelector('.hero-right');
   if (videoColumn && typeof IntersectionObserver !== 'undefined') {
     var minVisibleRatio = 0.12;
@@ -200,31 +248,43 @@
         if (!entry) return;
         var visible = entry.isIntersecting && entry.intersectionRatio >= minVisibleRatio;
         if (!visible) {
-          video.muted = true;
-        } else if (!userChoseMute) {
-          video.muted = false;
-          video.play().catch(function () {});
+          video.pause();
+        } else {
+          tryPlayHero();
         }
-        syncMuteUi();
       },
       { threshold: [0, minVisibleRatio, 0.25, 0.5, 0.75, 1] }
     );
     io.observe(videoColumn);
   }
 
-  syncMuteUi();
-
-  video.muted = false;
-  var p = video.play();
-  if (p !== undefined) {
-    p.catch(function () {
-      video.muted = true;
-      syncMuteUi();
-      return video.play();
-    });
-  }
-
   layoutHeroVideo();
+})();
+
+(function () {
+  var sec = document.getElementById('home-questions');
+  if (!sec) return;
+  function play() {
+    if (sec.classList.contains('home-questions--played')) return;
+    sec.classList.add('home-questions--played');
+  }
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    play();
+    return;
+  }
+  if (typeof IntersectionObserver !== 'undefined') {
+    var io = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting && en.intersectionRatio >= 0.22) play();
+        });
+      },
+      { threshold: [0, 0.12, 0.22, 0.35, 0.5], rootMargin: '0px 0px -8% 0px' }
+    );
+    io.observe(sec);
+  } else {
+    play();
+  }
 })();
 </script>
 
